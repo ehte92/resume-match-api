@@ -68,6 +68,12 @@ class Resume(Base):
     file_size = Column(Integer, nullable=False)  # bytes
     parsed_text = Column(Text, nullable=True)  # Raw extracted text
     parsed_data = Column(JSONB, nullable=True)  # Structured data
+
+    # Storage fields for R2/S3 integration
+    storage_backend = Column(String(20), nullable=False, default="local")  # local or r2
+    storage_url = Column(Text, nullable=True)  # R2 public URL
+    storage_key = Column(Text, nullable=True)  # R2 object key (for deletion)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 

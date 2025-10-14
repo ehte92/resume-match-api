@@ -36,6 +36,20 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
+    # File Upload Configuration
+    MAX_UPLOAD_SIZE_MB: int = 5
+    UPLOAD_TEMP_DIR: str = "/tmp/resume_uploads"
+    ALLOWED_UPLOAD_TYPES: str = '["application/pdf","application/vnd.openxmlformats-officedocument.wordprocessingml.document"]'
+
+    # Cloudflare R2 / S3 Storage Configuration
+    STORAGE_BACKEND: str = "local"  # local or r2
+    R2_ACCOUNT_ID: str = ""
+    R2_ACCESS_KEY_ID: str = ""
+    R2_SECRET_ACCESS_KEY: str = ""
+    R2_BUCKET_NAME: str = "resume-uploads"
+    R2_REGION: str = "auto"  # R2 uses "auto" for region
+    R2_PUBLIC_URL: str = ""  # Optional: Custom domain for public access
+
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
     )
@@ -52,6 +66,22 @@ class Settings(BaseSettings):
             except json.JSONDecodeError:
                 pass
         return ["http://localhost:5173", "http://localhost:3000"]
+
+    @field_validator("ALLOWED_UPLOAD_TYPES")
+    @classmethod
+    def parse_allowed_upload_types(cls, v: str) -> List[str]:
+        """Parse allowed upload types from JSON string to list."""
+        if isinstance(v, str):
+            try:
+                types = json.loads(v)
+                if isinstance(types, list):
+                    return types
+            except json.JSONDecodeError:
+                pass
+        return [
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ]
 
 
 @lru_cache(maxsize=1)
