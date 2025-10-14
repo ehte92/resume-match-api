@@ -32,7 +32,8 @@ def hash_password(password: str) -> str:
         $2b$12$...
     """
     # Convert password to bytes and hash with bcrypt
-    password_bytes = password.encode("utf-8")
+    # Truncate to 72 bytes (bcrypt limit) to avoid errors
+    password_bytes = password.encode("utf-8")[:72]
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password_bytes, salt)
     return hashed.decode("utf-8")
@@ -57,7 +58,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         False
     """
     # Convert both password and hash to bytes
-    password_bytes = plain_password.encode("utf-8")
+    # Truncate to 72 bytes (bcrypt limit) to match hash_password behavior
+    password_bytes = plain_password.encode("utf-8")[:72]
     hashed_bytes = hashed_password.encode("utf-8")
     return bcrypt.checkpw(password_bytes, hashed_bytes)
 
