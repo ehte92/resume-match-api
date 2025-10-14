@@ -1,0 +1,49 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+        cache: 'pip'
+        cache-dependency-path: requirements-dev.txt
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+        pip install flake8 bandit[toml]
+
+    - name: Check code formatting with black
+      run: |
+        black --check --diff app/ tests/
+
+    - name: Run flake8 linter
+      run: |
+        flake8 app/ tests/ --max-line-length=100 --extend-ignore=E203,W503 --exclude=alembic/versions --statistics
+      continue-on-error: true
+
+    - name: Run security checks with bandit
+      run: |
+        bandit -r app/ -ll -f screen
+      continue-on-error: true
+
+    - name: Check for common security issues
+      run: |
+        # Check for hardcoded secrets (basic check)
+        ! grep -r "password.*=.*['\"].*['\"]" app/ --include="*.py" || echo "Warning: Possible hardcoded passwords found"
+        ! grep -r "secret.*=.*['\"].*['\"]" app/ --include="*.py" || echo "Warning: Possible hardcoded secrets found"
+      continue-on-error: true

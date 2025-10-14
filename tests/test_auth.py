@@ -205,9 +205,7 @@ class TestTokenRefresh:
         refresh_token = login_response.json()["refresh_token"]
 
         # Use refresh token to get new tokens
-        response = client.post(
-            "/api/auth/refresh", json={"refresh_token": refresh_token}
-        )
+        response = client.post("/api/auth/refresh", json={"refresh_token": refresh_token})
 
         assert response.status_code == 200
         data = response.json()
@@ -229,9 +227,7 @@ class TestTokenRefresh:
         Verifies that attempting to refresh with an invalid
         or malformed token returns a 401 error.
         """
-        response = client.post(
-            "/api/auth/refresh", json={"refresh_token": "invalid_token_here"}
-        )
+        response = client.post("/api/auth/refresh", json={"refresh_token": "invalid_token_here"})
 
         assert response.status_code == 401
 
@@ -250,8 +246,6 @@ class TestTokenRefresh:
         access_token = login_response.json()["access_token"]
 
         # Try to use access token for refresh (should fail)
-        response = client.post(
-            "/api/auth/refresh", json={"refresh_token": access_token}
-        )
+        response = client.post("/api/auth/refresh", json={"refresh_token": access_token})
 
         assert response.status_code == 401
