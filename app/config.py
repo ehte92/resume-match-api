@@ -2,6 +2,7 @@
 Application configuration management using Pydantic Settings.
 Loads environment variables from .env file with type validation.
 """
+
 import json
 from functools import lru_cache
 from typing import List
@@ -36,10 +37,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
     )
 
     @field_validator("CORS_ORIGINS")

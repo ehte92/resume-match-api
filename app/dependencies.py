@@ -2,6 +2,7 @@
 Shared dependency functions for FastAPI routes.
 Provides database sessions and user authentication.
 """
+
 from typing import Generator
 
 from fastapi import Depends, HTTPException, status
@@ -38,7 +39,7 @@ def get_db() -> Generator[Session, None, None]:
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):  # -> User:  # Uncomment when User model is created
     """
     Dependency function to get the current authenticated user.
@@ -68,9 +69,7 @@ def get_current_user(
 
         # Decode JWT token
         payload = jwt.decode(
-            token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM]
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
 
         # Extract user ID from token
@@ -92,7 +91,7 @@ def get_current_user(
 
 
 def get_current_active_user(
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):  # current_user: User = Depends(get_current_user) -> User:  # Uncomment when User model is created
     """
     Dependency function to get the current active user.

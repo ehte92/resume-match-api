@@ -2,6 +2,7 @@
 FastAPI application entry point.
 Configures CORS, includes routers, and defines the main app instance.
 """
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -19,24 +20,15 @@ app = FastAPI(
     title="AI Resume Optimizer API",
     description="Backend API for AI-powered resume optimization and ATS checking",
     version="1.0.0",
-    contact={
-        "name": "Resume Optimizer Team",
-        "email": "support@resumeoptimizer.com"
-    },
-    license_info={
-        "name": "MIT",
-        "url": "https://opensource.org/licenses/MIT"
-    },
+    contact={"name": "Resume Optimizer Team", "email": "support@resumeoptimizer.com"},
+    license_info={"name": "MIT", "url": "https://opensource.org/licenses/MIT"},
     openapi_tags=[
-        {
-            "name": "health",
-            "description": "Health check endpoints for monitoring"
-        },
+        {"name": "health", "description": "Health check endpoints for monitoring"},
         {
             "name": "authentication",
-            "description": "User authentication and authorization endpoints"
-        }
-    ]
+            "description": "User authentication and authorization endpoints",
+        },
+    ],
 )
 
 # Configure CORS middleware
@@ -87,7 +79,7 @@ async def root():
         "message": "Welcome to AI Resume Optimizer API",
         "version": "1.0.0",
         "docs": "/docs",
-        "redoc": "/redoc"
+        "redoc": "/redoc",
     }
 
 
