@@ -1,10 +1,8 @@
 # AI Resume Optimizer - Backend API
 
-![CI Pipeline](https://github.com/ehte92/resume-match-api/workflows/CI%20Pipeline/badge.svg)
 ![Code Quality](https://github.com/ehte92/resume-match-api/workflows/Code%20Quality/badge.svg)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.116.1-009688)
-![Coverage](https://img.shields.io/badge/coverage-91%25-brightgreen)
 
 A modern, production-ready FastAPI backend for AI-powered resume optimization. This API provides secure user authentication, database management with migrations, and comprehensive test coverage.
 
@@ -415,43 +413,29 @@ alembic downgrade -1
 alembic downgrade <revision>
 ```
 
-## CI/CD
+## Code Quality
 
-This project uses GitHub Actions for continuous integration and deployment.
+This project uses GitHub Actions for automated code quality checks.
 
-### Automated Workflows
+### Automated Checks
 
-#### CI Pipeline
+The Code Quality workflow runs on every push and pull request to main, master, and develop branches:
 
-- **Triggers:** Push/PR to main, master, develop branches
-- **Python Versions:** 3.11, 3.12, 3.13
-- **Services:** PostgreSQL 14
-- **Steps:**
-  1. Checkout code
-  2. Set up Python with pip caching
-  3. Install dependencies
-  4. Run database migrations
-  5. Run pytest with coverage
-  6. Enforce 80% coverage threshold
-  7. Upload coverage to Codecov (optional)
+- **Black Formatting:** Ensures code follows PEP 8 style guidelines
+- **Flake8 Linting:** Checks code style and quality issues
+- **Bandit Security:** Scans for common security vulnerabilities
+- **Secret Detection:** Basic checks for hardcoded passwords and secrets
 
-#### Code Quality Checks
-
-- **Black Formatting:** Ensures code follows PEP 8
-- **Flake8 Linting:** Checks code style and quality
-- **Bandit Security:** Scans for security vulnerabilities
-- **Secret Detection:** Basic checks for hardcoded secrets
-
-### Running CI Checks Locally
+### Running Checks Locally
 
 Before pushing code, run these checks locally:
 
 ```bash
-# Run tests with coverage
-pytest --cov=app --cov-report=term-missing
-
 # Check code formatting
 black --check app/ tests/
+
+# Auto-format code
+black app/ tests/
 
 # Run linter
 flake8 app/ tests/
@@ -462,8 +446,7 @@ bandit -r app/ -ll
 
 ### Configuration Files
 
-- `.github/workflows/ci.yml` - Main CI pipeline
-- `.github/workflows/code-quality.yml` - Code quality checks
+- `.github/workflows/code-quality.yml` - Automated code quality checks
 - `pyproject.toml` - Tool configurations (black, pytest, coverage)
 - `.flake8` - Flake8 configuration
 
