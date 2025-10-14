@@ -5,7 +5,6 @@ This module tests all authentication-related endpoints including
 user registration, login, token refresh, and protected routes.
 """
 
-import pytest
 from fastapi.testclient import TestClient
 from app.models.user import User
 

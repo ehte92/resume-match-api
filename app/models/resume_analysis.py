@@ -4,8 +4,6 @@ Stores analysis results comparing resume against job descriptions.
 """
 
 import uuid
-from datetime import datetime
-from decimal import Decimal
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID

@@ -5,7 +5,6 @@ Configures CORS, includes routers, and defines the main app instance.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.routers import auth, health

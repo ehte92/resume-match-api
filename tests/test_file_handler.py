@@ -84,9 +84,9 @@ async def test_save_temp_file_docx():
     """Test saving a DOCX file"""
     # Create mock uploaded file
     file_content = b"Test DOCX content"
-    headers = Headers({
-        "content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    })
+    headers = Headers(
+        {"content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
+    )
     upload_file = UploadFile(filename="test.docx", file=BytesIO(file_content), headers=headers)
 
     # Save file

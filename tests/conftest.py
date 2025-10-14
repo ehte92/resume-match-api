@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.database import engine as app_engine, get_db, SessionLocal
+from app.database import get_db, SessionLocal
 from app.models.user import User
 from app.utils.security import hash_password
 

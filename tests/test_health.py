@@ -5,7 +5,6 @@ This module tests the basic health check endpoint and the database
 health check endpoint to ensure the API is operational.
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 

@@ -6,8 +6,7 @@ Supports both local storage and Cloudflare R2 (S3-compatible) storage.
 
 import os
 import uuid
-from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 from fastapi import UploadFile
 

@@ -4,7 +4,6 @@ Stores uploaded resume files and parsed data.
 """
 
 import uuid
-from datetime import datetime
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
