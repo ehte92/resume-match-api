@@ -3,7 +3,6 @@ Unit tests for storage service (Cloudflare R2 integration).
 Tests file upload, download, deletion, and presigned URL generation.
 """
 
-import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -65,7 +64,10 @@ def test_get_client_creates_boto3_client(storage_service, mock_s3_client, mock_s
         mock_boto3.assert_called_once()
         call_kwargs = mock_boto3.call_args[1]
 
-        assert call_kwargs["endpoint_url"] == f"https://{mock_settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+        assert (
+            call_kwargs["endpoint_url"]
+            == f"https://{mock_settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+        )
         assert call_kwargs["aws_access_key_id"] == mock_settings.R2_ACCESS_KEY_ID
         assert call_kwargs["aws_secret_access_key"] == mock_settings.R2_SECRET_ACCESS_KEY
         assert call_kwargs["region_name"] == mock_settings.R2_REGION
@@ -99,7 +101,9 @@ def test_upload_file_success(storage_service, mock_s3_client, mock_settings, tmp
     with patch.object(storage_service, "_get_client", return_value=mock_s3_client):
         # Upload file
         result_url = storage_service.upload_file(
-            file_path=str(test_file), object_key="resumes/user123/test.pdf", content_type="application/pdf"
+            file_path=str(test_file),
+            object_key="resumes/user123/test.pdf",
+            content_type="application/pdf",
         )
 
         # Verify put_object was called
@@ -142,7 +146,9 @@ def test_download_file_success(storage_service, mock_s3_client, mock_settings, t
     download_path = tmp_path / "downloaded_resume.pdf"
 
     with patch.object(storage_service, "_get_client", return_value=mock_s3_client):
-        storage_service.download_file(object_key="resumes/user123/test.pdf", local_path=str(download_path))
+        storage_service.download_file(
+            object_key="resumes/user123/test.pdf", local_path=str(download_path)
+        )
 
         # Verify download_file was called
         mock_s3_client.download_file.assert_called_once_with(
@@ -199,9 +205,7 @@ def test_file_exists_true(storage_service, mock_s3_client, mock_settings):
 
 def test_file_exists_false(storage_service, mock_s3_client, mock_settings):
     """Test file_exists returns False when file doesn't exist"""
-    mock_s3_client.head_object.side_effect = ClientError(
-        {"Error": {"Code": "404"}}, "head_object"
-    )
+    mock_s3_client.head_object.side_effect = ClientError({"Error": {"Code": "404"}}, "head_object")
 
     with patch.object(storage_service, "_get_client", return_value=mock_s3_client):
         exists = storage_service.file_exists(object_key="resumes/user123/nonexistent.pdf")

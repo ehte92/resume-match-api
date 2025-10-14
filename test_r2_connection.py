@@ -23,9 +23,21 @@ def test_r2_configuration():
     settings = get_settings()
 
     print(f"\n✓ Storage Backend: {settings.STORAGE_BACKEND}")
-    print(f"✓ R2 Account ID: {settings.R2_ACCOUNT_ID[:8]}..." if settings.R2_ACCOUNT_ID else "✗ R2 Account ID: NOT SET")
-    print(f"✓ R2 Access Key: {settings.R2_ACCESS_KEY_ID[:8]}..." if settings.R2_ACCESS_KEY_ID else "✗ R2 Access Key: NOT SET")
-    print(f"✓ R2 Secret Key: {'*' * 20}" if settings.R2_SECRET_ACCESS_KEY else "✗ R2 Secret Key: NOT SET")
+    print(
+        f"✓ R2 Account ID: {settings.R2_ACCOUNT_ID[:8]}..."
+        if settings.R2_ACCOUNT_ID
+        else "✗ R2 Account ID: NOT SET"
+    )
+    print(
+        f"✓ R2 Access Key: {settings.R2_ACCESS_KEY_ID[:8]}..."
+        if settings.R2_ACCESS_KEY_ID
+        else "✗ R2 Access Key: NOT SET"
+    )
+    print(
+        f"✓ R2 Secret Key: {'*' * 20}"
+        if settings.R2_SECRET_ACCESS_KEY
+        else "✗ R2 Secret Key: NOT SET"
+    )
     print(f"✓ R2 Bucket Name: {settings.R2_BUCKET_NAME}")
     print(f"✓ R2 Region: {settings.R2_REGION}")
 
@@ -50,14 +62,14 @@ def test_r2_client_initialization():
 
     try:
         storage = get_storage_service()
-        client = storage._get_client()
+        storage._get_client()  # Initialize client to test connection
 
         print("\n✓ R2 client initialized successfully!")
         print(f"✓ Endpoint: https://{storage.settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com")
         return True
 
     except Exception as e:
-        print(f"\n✗ ERROR: Failed to initialize R2 client")
+        print("\n✗ ERROR: Failed to initialize R2 client")
         print(f"  Error: {str(e)}")
         return False
 
@@ -75,33 +87,30 @@ def test_r2_bucket_access():
         # Try to list objects (just the first one)
         print(f"\nAttempting to list objects in bucket: {storage.settings.R2_BUCKET_NAME}")
 
-        response = client.list_objects_v2(
-            Bucket=storage.settings.R2_BUCKET_NAME,
-            MaxKeys=1
-        )
+        response = client.list_objects_v2(Bucket=storage.settings.R2_BUCKET_NAME, MaxKeys=1)
 
-        print(f"\n✓ Bucket is accessible!")
+        print("\n✓ Bucket is accessible!")
         print(f"✓ Bucket contains {response.get('KeyCount', 0)} objects (showing max 1)")
 
-        if 'Contents' in response and len(response['Contents']) > 0:
+        if "Contents" in response and len(response["Contents"]) > 0:
             print(f"✓ Sample object: {response['Contents'][0]['Key']}")
 
         return True
 
     except Exception as e:
-        print(f"\n✗ ERROR: Failed to access bucket")
+        print("\n✗ ERROR: Failed to access bucket")
         print(f"  Error type: {type(e).__name__}")
         print(f"  Error: {str(e)}")
 
         if "NoSuchBucket" in str(e):
             print(f"\n  Hint: Bucket '{storage.settings.R2_BUCKET_NAME}' does not exist.")
-            print(f"        Create it in Cloudflare R2 dashboard.")
+            print("        Create it in Cloudflare R2 dashboard.")
         elif "InvalidAccessKeyId" in str(e):
-            print(f"\n  Hint: Access Key ID is invalid.")
-            print(f"        Check R2_ACCESS_KEY_ID in .env")
+            print("\n  Hint: Access Key ID is invalid.")
+            print("        Check R2_ACCESS_KEY_ID in .env")
         elif "SignatureDoesNotMatch" in str(e):
-            print(f"\n  Hint: Secret Access Key is incorrect.")
-            print(f"        Check R2_SECRET_ACCESS_KEY in .env")
+            print("\n  Hint: Secret Access Key is incorrect.")
+            print("        Check R2_SECRET_ACCESS_KEY in .env")
 
         return False
 
@@ -117,7 +126,9 @@ def test_r2_upload():
 
         # Create a test file
         test_file_path = "/tmp/test_r2_upload.txt"
-        test_content = "This is a test file for R2 upload verification.\nTimestamp: " + str(os.time.time() if hasattr(os, 'time') else 'unknown')
+        test_content = "This is a test file for R2 upload verification.\nTimestamp: " + str(
+            os.time.time() if hasattr(os, "time") else "unknown"
+        )
 
         with open(test_file_path, "w") as f:
             f.write(test_content)
@@ -129,12 +140,10 @@ def test_r2_upload():
         print(f"✓ Uploading to R2 with key: {object_key}")
 
         url = storage.upload_file(
-            file_path=test_file_path,
-            object_key=object_key,
-            content_type="text/plain"
+            file_path=test_file_path, object_key=object_key, content_type="text/plain"
         )
 
-        print(f"\n✓ Upload successful!")
+        print("\n✓ Upload successful!")
         print(f"✓ File URL: {url}")
 
         # Verify the file exists
@@ -147,16 +156,16 @@ def test_r2_upload():
 
         # Clean up local test file
         os.remove(test_file_path)
-        print(f"\n✓ Cleaned up local test file")
+        print("\n✓ Cleaned up local test file")
 
-        print(f"\n✓✓✓ R2 UPLOAD TEST PASSED! ✓✓✓")
+        print("\n✓✓✓ R2 UPLOAD TEST PASSED! ✓✓✓")
         print(f"\nNote: Test file '{object_key}' was uploaded to your bucket.")
-        print(f"      You can delete it manually or leave it for reference.")
+        print("      You can delete it manually or leave it for reference.")
 
         return True
 
     except Exception as e:
-        print(f"\n✗ ERROR: Failed to upload file")
+        print("\n✗ ERROR: Failed to upload file")
         print(f"  Error type: {type(e).__name__}")
         print(f"  Error: {str(e)}")
 

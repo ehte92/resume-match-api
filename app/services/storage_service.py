@@ -45,7 +45,9 @@ class StorageService:
             raise ValueError("R2_ACCOUNT_ID is not configured")
 
         if not self.settings.R2_ACCESS_KEY_ID or not self.settings.R2_SECRET_ACCESS_KEY:
-            raise ValueError("R2 credentials (ACCESS_KEY_ID and SECRET_ACCESS_KEY) are not configured")
+            raise ValueError(
+                "R2 credentials (ACCESS_KEY_ID and SECRET_ACCESS_KEY) are not configured"
+            )
 
         # Construct R2 endpoint URL
         endpoint_url = f"https://{self.settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
@@ -63,7 +65,9 @@ class StorageService:
         logger.info(f"Initialized R2 client for bucket: {self.settings.R2_BUCKET_NAME}")
         return self._client
 
-    def upload_file(self, file_path: str, object_key: str, content_type: Optional[str] = None) -> str:
+    def upload_file(
+        self, file_path: str, object_key: str, content_type: Optional[str] = None
+    ) -> str:
         """
         Upload a file to R2 storage.
 
