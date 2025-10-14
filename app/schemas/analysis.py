@@ -65,8 +65,12 @@ class AnalysisResponse(AnalysisBase):
     resume_id: UUID = Field(..., description="Resume UUID that was analyzed")
 
     # Scores
-    match_score: Optional[Decimal] = Field(None, description="Overall match score (0-100)", ge=0, le=100)
-    ats_score: Optional[Decimal] = Field(None, description="ATS compatibility score (0-100)", ge=0, le=100)
+    match_score: Optional[Decimal] = Field(
+        None, description="Overall match score (0-100)", ge=0, le=100
+    )
+    ats_score: Optional[Decimal] = Field(
+        None, description="ATS compatibility score (0-100)", ge=0, le=100
+    )
     semantic_similarity: Optional[Decimal] = Field(
         None, description="Semantic similarity score (0-100)", ge=0, le=100
     )
@@ -81,8 +85,12 @@ class AnalysisResponse(AnalysisBase):
 
     # Issues and suggestions
     ats_issues: Optional[List[Dict[str, Any]]] = Field(None, description="ATS compatibility issues")
-    ai_suggestions: Optional[List[Dict[str, Any]]] = Field(None, description="AI-generated suggestions")
-    rewritten_bullets: Optional[List[Dict[str, Any]]] = Field(None, description="AI-rewritten bullet points")
+    ai_suggestions: Optional[List[Dict[str, Any]]] = Field(
+        None, description="AI-generated suggestions"
+    )
+    rewritten_bullets: Optional[List[Dict[str, Any]]] = Field(
+        None, description="AI-rewritten bullet points"
+    )
 
     processing_time_ms: Optional[int] = Field(None, description="Processing time in milliseconds")
     created_at: datetime = Field(..., description="Analysis timestamp")

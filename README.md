@@ -47,10 +47,14 @@ backend/
 │   │   ├── auth.py       # Authentication endpoints
 │   │   └── health.py     # Health check endpoints
 │   ├── models/           # SQLAlchemy database models
-│   │   └── user.py       # User model
+│   │   ├── user.py       # User model
+│   │   ├── resume.py     # Resume model (NEW - Phase 9)
+│   │   └── resume_analysis.py  # Analysis model (NEW - Phase 9)
 │   ├── schemas/          # Pydantic schemas for validation
 │   │   ├── auth.py       # Auth request/response schemas
-│   │   └── user.py       # User schemas
+│   │   ├── user.py       # User schemas
+│   │   ├── resume.py     # Resume schemas (NEW - Phase 9)
+│   │   └── analysis.py   # Analysis schemas (NEW - Phase 9)
 │   ├── services/         # Business logic layer
 │   │   └── auth_service.py
 │   ├── utils/            # Utility functions
@@ -494,6 +498,8 @@ mypy app/
 - **Phase 5:** Database Migrations
 - **Phase 6:** Testing Setup (91% coverage)
 - **Phase 7:** Documentation
+- **Phase 8:** Bcrypt Bug Fix (password truncation to 72 bytes)
+- **Phase 9:** Resume & Analysis Database Models (NO subscription/payment features)
 
 ### Current State
 
@@ -503,6 +509,8 @@ mypy app/
 - ✅ Comprehensive test suite
 - ✅ Auto-generated API documentation
 - ✅ Health monitoring endpoints
+- ✅ Resume and Analysis database models
+- ✅ 3 database tables: users, resumes, resume_analyses
 
 ## Troubleshooting
 
