@@ -27,6 +27,9 @@ htmlcov/
 *.db
 *.sqlite
 
+# Alembic
+alembic/versions/__pycache__/
+
 # Logs
 *.log
 
