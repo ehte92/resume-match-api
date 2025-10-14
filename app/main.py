@@ -8,9 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
-
-# TODO: Import routers when created in Phase 4
-# from app.routers import auth, health
+from app.routers import auth, health
 
 # Get settings
 settings = get_settings()
@@ -40,9 +38,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers (will be uncommented in Phase 4)
-# app.include_router(health.router, tags=["health"])
-# app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
+# Include routers
+app.include_router(health.router, tags=["health"])
+app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 
 
 @app.on_event("startup")
@@ -81,17 +79,6 @@ async def root():
         "docs": "/docs",
         "redoc": "/redoc",
     }
-
-
-@app.get("/health", tags=["health"])
-async def health_check():
-    """
-    Basic health check endpoint.
-
-    Returns:
-        dict: Server status
-    """
-    return {"status": "healthy"}
 
 
 # TODO: Add global exception handlers (optional for Phase 3)

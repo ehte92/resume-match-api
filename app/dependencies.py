@@ -4,6 +4,7 @@ Provides database sessions and user authentication.
 """
 
 from typing import Generator
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -12,9 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import SessionLocal
-
-# TODO: Import User model when created in Phase 4
-# from app.models.user import User
+from app.models.user import User
 
 # Security scheme for JWT Bearer tokens
 security = HTTPBearer()
@@ -40,7 +39,7 @@ def get_db() -> Generator[Session, None, None]:
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
-):  # -> User:  # Uncomment when User model is created
+) -> User:
     """
     Dependency function to get the current authenticated user.
 
@@ -68,31 +67,33 @@ def get_current_user(
         token = credentials.credentials
 
         # Decode JWT token
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
 
         # Extract user ID from token
-        user_id: str = payload.get("sub")
-        if user_id is None:
+        user_id_str: str = payload.get("sub")
+        if user_id_str is None:
+            raise credentials_exception
+
+        # Convert string UUID to UUID object
+        try:
+            user_id = UUID(user_id_str)
+        except ValueError:
             raise credentials_exception
 
     except JWTError:
         raise credentials_exception
 
-    # TODO: Query user from database when User model is created in Phase 4
-    # user = db.query(User).filter(User.id == user_id).first()
-    # if user is None:
-    #     raise credentials_exception
-    # return user
+    # Query user from database
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise credentials_exception
 
-    # Placeholder return for Phase 3 (will be replaced in Phase 4)
-    return {"user_id": user_id}
+    return user
 
 
 def get_current_active_user(
-    current_user=Depends(get_current_user),
-):  # current_user: User = Depends(get_current_user) -> User:  # Uncomment when User model is created
+    current_user: User = Depends(get_current_user),
+) -> User:
     """
     Dependency function to get the current active user.
 
@@ -107,10 +108,6 @@ def get_current_active_user(
     Raises:
         HTTPException: 400 if user is inactive
     """
-    # TODO: Uncomment when User model is created in Phase 4
-    # if not current_user.is_active:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="Inactive user"
-    #     )
+    if not current_user.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
     return current_user
