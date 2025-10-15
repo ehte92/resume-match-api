@@ -10,6 +10,7 @@ A modern, production-ready FastAPI backend for AI-powered resume optimization. T
 
 - 🔐 **JWT Authentication** - Secure user registration, login, and token refresh
 - 📄 **Resume Management** - Upload, parse, and store PDF/DOCX resumes with R2 integration
+- 🔍 **Keyword Analysis** - TF-IDF and spaCy NER for extracting keywords and calculating match scores
 - ☁️ **Cloud Storage** - Cloudflare R2 integration for scalable file storage
 - 🔗 **Presigned URLs** - Automatic generation of time-limited download links
 - 🗄️ **PostgreSQL Database** - Robust data persistence with SQLAlchemy ORM
@@ -28,6 +29,8 @@ A modern, production-ready FastAPI backend for AI-powered resume optimization. T
 - **SQLAlchemy 2.0.36** - Python SQL toolkit and ORM
 - **Alembic** - Database migration tool
 - **Pydantic 2.10.6** - Data validation using Python type hints
+- **spaCy 3.8.7** - NLP library for named entity recognition
+- **scikit-learn 1.7.2** - Machine learning library for TF-IDF vectorization
 - **pytest** - Testing framework with fixtures
 - **bcrypt** - Secure password hashing
 - **python-jose** - JWT token implementation
@@ -63,7 +66,8 @@ backend/
 │   │   ├── auth_service.py
 │   │   ├── resume_service.py    # Resume CRUD operations (NEW - Phase 11)
 │   │   ├── resume_parser.py     # PDF/DOCX parsing (Phase 10)
-│   │   └── storage_service.py   # R2 storage operations (NEW - Phase 11)
+│   │   ├── storage_service.py   # R2 storage operations (NEW - Phase 11)
+│   │   └── keyword_analyzer.py  # Keyword extraction and matching (NEW - Phase 12)
 │   ├── utils/            # Utility functions
 │   │   ├── security.py   # Password hashing, JWT tokens
 │   │   └── file_handler.py      # File validation and upload (Phase 10)
@@ -74,7 +78,10 @@ backend/
 ├── tests/                # Test suite
 │   ├── conftest.py       # Pytest fixtures
 │   ├── test_auth.py      # Authentication tests
-│   └── test_health.py    # Health check tests
+│   ├── test_health.py    # Health check tests
+│   ├── test_resume.py    # Resume management tests (Phase 11)
+│   ├── test_keyword_analyzer.py  # Keyword analyzer tests (Phase 12)
+│   └── fixtures/         # Test data files
 ├── alembic/              # Database migrations
 │   └── versions/         # Migration scripts
 ├── .env.example          # Environment variables template
@@ -701,6 +708,7 @@ mypy app/
 - **Phase 9:** Resume & Analysis Database Models (NO subscription/payment features)
 - **Phase 10:** Resume Parser Service (PDF/DOCX parsing with 81.62% test coverage)
 - **Phase 11:** Resume Upload & Management API with R2 integration
+- **Phase 12:** Keyword Analyzer Service (TF-IDF + spaCy NER with 23 passing tests)
 
 ### Current State
 
@@ -715,11 +723,12 @@ mypy app/
 - ✅ Resume upload and management API (5 endpoints)
 - ✅ Cloudflare R2 storage integration
 - ✅ Presigned URL generation for secure downloads
+- ✅ Keyword analysis service (TF-IDF + spaCy NER)
+- ✅ Match score calculation (resume vs job description)
 - ✅ 3 database tables: users, resumes, resume_analyses
 
 ### Next Steps
 
-- **Phase 12:** Keyword Analyzer Service - Extract and analyze keywords from job descriptions
 - **Phase 13:** ATS Checker Service - Check resume for ATS compatibility
 - **Phase 14:** OpenAI Integration - Generate AI-powered suggestions
 - **Phase 15:** Resume Analysis Endpoints - Complete analysis workflow
