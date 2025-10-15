@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import auth, health, resume
+from app.routers import analysis, auth, health, resume
 
 # Get settings
 settings = get_settings()
@@ -29,6 +29,10 @@ app = FastAPI(
             "name": "resumes",
             "description": "Resume upload, management, and retrieval endpoints",
         },
+        {
+            "name": "analyses",
+            "description": "Resume analysis endpoints - compare resumes against job descriptions",
+        },
     ],
 )
 
@@ -45,6 +49,7 @@ app.add_middleware(
 app.include_router(health.router, tags=["health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(resume.router, prefix="/api/resumes", tags=["resumes"])
+app.include_router(analysis.router, prefix="/api/analyses", tags=["analyses"])
 
 
 @app.on_event("startup")

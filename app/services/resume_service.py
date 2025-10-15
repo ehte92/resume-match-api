@@ -85,7 +85,11 @@ class ResumeService:
             logger.info(f"Saving temp file for user {user_id}: {upload_file.filename}")
             temp_file_path = await file_handler.save_temp_file(upload_file)
 
-            # Step 4: Determine file type for parsing
+            # Step 4: Calculate file hash for deduplication
+            file_hash = await file_handler.calculate_file_hash(upload_file)
+            logger.info(f"Calculated file hash: {file_hash[:16]}...")
+
+            # Step 5: Determine file type for parsing
             file_extension = file_handler.get_file_extension(upload_file.content_type)
             if not file_extension:
                 raise HTTPException(
@@ -95,7 +99,7 @@ class ResumeService:
 
             file_type = file_extension.replace(".", "")  # Remove dot
 
-            # Step 5: Upload to R2 storage (if enabled)
+            # Step 6: Upload to R2 storage (if enabled)
             storage_result = await file_handler.save_file_with_storage(
                 local_file_path=temp_file_path,
                 user_id=str(user_id),
@@ -107,7 +111,7 @@ class ResumeService:
             location = storage_result.get("storage_url", temp_file_path)
             logger.info(f"File uploaded to {backend}: {location}")
 
-            # Step 6: Parse resume
+            # Step 7: Parse resume
             logger.info(f"Parsing resume: {temp_file_path}")
             try:
                 parsed_data = self.parser.parse(temp_file_path, file_type)
@@ -122,13 +126,14 @@ class ResumeService:
                     "sections": {"experience": [], "education": [], "skills": []},
                 }
 
-            # Step 7: Create database record
+            # Step 8: Create database record
             resume = Resume(
                 user_id=user_id,
                 file_name=upload_file.filename,
                 file_path=storage_result["local_path"],
                 file_type=file_type,
                 file_size=file_size,
+                file_hash=file_hash,  # NEW: Store hash for deduplication
                 parsed_text=parsed_data.get("raw_text"),
                 parsed_data=parsed_data,
                 storage_backend=storage_result["storage_backend"],
@@ -159,7 +164,7 @@ class ResumeService:
             )
 
         finally:
-            # Step 8: Clean up temporary file
+            # Step 9: Clean up temporary file
             if temp_file_path and os.path.exists(temp_file_path):
                 try:
                     file_handler.delete_temp_file(temp_file_path)

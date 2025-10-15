@@ -197,3 +197,45 @@ def delete_from_storage(storage_backend: str, storage_key: Optional[str] = None)
 
         except Exception as e:
             raise ValueError(f"Failed to delete from R2: {str(e)}")
+
+
+async def calculate_file_hash(file: UploadFile) -> str:
+    """
+    Calculate SHA-256 hash of uploaded file for deduplication.
+
+    This function reads the file content in chunks and calculates its SHA-256 hash.
+    The file pointer is reset to the beginning after hashing, allowing subsequent reads.
+
+    Args:
+        file: FastAPI UploadFile object
+
+    Returns:
+        64-character hexadecimal string representing the SHA-256 hash
+
+    Example:
+        >>> from fastapi import UploadFile
+        >>> file = UploadFile(...)
+        >>> hash_value = await calculate_file_hash(file)
+        >>> print(hash_value)
+        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+
+    Note:
+        - Reads file in 8KB chunks to handle large files efficiently
+        - Automatically resets file pointer to beginning after hashing
+        - Same file will always produce the same hash (deterministic)
+    """
+    import hashlib
+
+    sha256 = hashlib.sha256()
+
+    # Read file in 8KB chunks to handle large files efficiently
+    while True:
+        chunk = await file.read(8192)  # 8KB chunks
+        if not chunk:
+            break
+        sha256.update(chunk)
+
+    # Reset file pointer to beginning for subsequent reads
+    await file.seek(0)
+
+    return sha256.hexdigest()

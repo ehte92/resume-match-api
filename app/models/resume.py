@@ -24,6 +24,7 @@ class Resume(Base):
         file_path: Storage path or URL (S3/local storage)
         file_type: File extension (pdf or docx)
         file_size: File size in bytes
+        file_hash: SHA-256 hash of file content (for deduplication)
         parsed_text: Raw text extracted from the file
         parsed_data: Structured data (sections, contact info) as JSONB
         created_at: Timestamp when resume was uploaded
@@ -65,6 +66,7 @@ class Resume(Base):
     file_path = Column(String(512), nullable=False)
     file_type = Column(String(10), nullable=False)  # pdf or docx
     file_size = Column(Integer, nullable=False)  # bytes
+    file_hash = Column(String(64), nullable=True, index=True)  # SHA-256 hash for deduplication
     parsed_text = Column(Text, nullable=True)  # Raw extracted text
     parsed_data = Column(JSONB, nullable=True)  # Structured data
 
