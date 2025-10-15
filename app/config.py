@@ -39,9 +39,9 @@ class Settings(BaseSettings):
     # File Upload Configuration
     MAX_UPLOAD_SIZE_MB: int = 5
     UPLOAD_TEMP_DIR: str = "/tmp/resume_uploads"
-    ALLOWED_UPLOAD_TYPES: str = (
-        '["application/pdf","application/vnd.openxmlformats-officedocument.wordprocessingml.document"]'
-    )
+    # fmt: off
+    ALLOWED_UPLOAD_TYPES: str = '["application/pdf","application/vnd.openxmlformats-officedocument.wordprocessingml.document"]'  # noqa: E501
+    # fmt: on
 
     # Cloudflare R2 / S3 Storage Configuration
     STORAGE_BACKEND: str = "local"  # local or r2

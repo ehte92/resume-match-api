@@ -228,5 +228,5 @@ def test_get_public_url_without_custom_domain(storage_service, mock_settings):
 
     url = storage_service._get_public_url("resumes/user123/test.pdf")
 
-    expected = f"https://{mock_settings.R2_BUCKET_NAME}.{mock_settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/resumes/user123/test.pdf"
+    expected = f"https://{mock_settings.R2_BUCKET_NAME}.{mock_settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/resumes/user123/test.pdf"  # noqa: E501
     assert url == expected

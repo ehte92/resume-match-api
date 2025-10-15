@@ -114,14 +114,15 @@ def get_file_extension(content_type: str) -> Optional[str]:
 
 
 async def save_file_with_storage(
-    upload_file: UploadFile, user_id: str, use_r2: bool = None
+    local_file_path: str, user_id: str, content_type: str, use_r2: bool = None
 ) -> Dict[str, str]:
     """
-    Save uploaded file to local temp storage and optionally upload to R2.
+    Upload local file to R2 storage (if enabled) and return storage metadata.
 
     Args:
-        upload_file: FastAPI UploadFile object
+        local_file_path: Path to local temporary file (already saved)
         user_id: User ID for organizing files in R2
+        content_type: MIME type of the file (for R2 metadata)
         use_r2: Whether to upload to R2 (None = use config setting)
 
     Returns:
@@ -132,14 +133,10 @@ async def save_file_with_storage(
             - storage_backend: 'local' or 'r2'
 
     Raises:
-        OSError: If file cannot be saved
         ValueError: If R2 upload fails
     """
-    # Save to local temp first
-    local_path = await save_temp_file(upload_file)
-
     result = {
-        "local_path": local_path,
+        "local_path": local_file_path,
         "storage_url": None,
         "storage_key": None,
         "storage_backend": "local",
@@ -156,12 +153,12 @@ async def save_file_with_storage(
             storage = get_storage_service()
 
             # Generate object key: resumes/{user_id}/{filename}
-            filename = os.path.basename(local_path)
+            filename = os.path.basename(local_file_path)
             object_key = f"resumes/{user_id}/{filename}"
 
-            # Upload to R2
+            # Upload to R2 from local file
             storage_url = storage.upload_file(
-                file_path=local_path, object_key=object_key, content_type=upload_file.content_type
+                file_path=local_file_path, object_key=object_key, content_type=content_type
             )
 
             result.update(
@@ -174,7 +171,7 @@ async def save_file_with_storage(
 
         except Exception as e:
             # If R2 upload fails, clean up local file and re-raise
-            delete_temp_file(local_path)
+            delete_temp_file(local_file_path)
             raise ValueError(f"Failed to upload to R2: {str(e)}")
 
     return result

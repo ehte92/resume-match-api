@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import auth, health
+from app.routers import auth, health, resume
 
 # Get settings
 settings = get_settings()
@@ -25,6 +25,10 @@ app = FastAPI(
             "name": "authentication",
             "description": "User authentication and authorization endpoints",
         },
+        {
+            "name": "resumes",
+            "description": "Resume upload, management, and retrieval endpoints",
+        },
     ],
 )
 
@@ -40,6 +44,7 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router, tags=["health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
+app.include_router(resume.router, prefix="/api/resumes", tags=["resumes"])
 
 
 @app.on_event("startup")

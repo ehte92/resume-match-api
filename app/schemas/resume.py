@@ -51,6 +51,11 @@ class ResumeResponse(ResumeBase):
     parsed_data: Optional[Dict[str, Any]] = Field(
         None, description="Structured data (sections, contact info, etc.)"
     )
+    storage_backend: str = Field(..., description="Storage backend (local or r2)")
+    download_url: Optional[str] = Field(
+        None,  # noqa: E501
+        description="Presigned download URL (null for local storage, 1-hour expiration for R2)",
+    )
     created_at: datetime = Field(..., description="Upload timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
 

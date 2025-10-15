@@ -8,8 +8,8 @@ and authentication helpers used across all test files.
 import pytest
 from fastapi.testclient import TestClient
 
+from app.database import SessionLocal, get_db
 from app.main import app
-from app.database import get_db, SessionLocal
 from app.models.user import User
 from app.utils.security import hash_password
 

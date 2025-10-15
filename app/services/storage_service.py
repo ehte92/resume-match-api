@@ -228,7 +228,7 @@ class StorageService:
 
         # Otherwise, construct R2 public URL
         # Note: R2 buckets need to have public access enabled for this to work
-        return f"https://{self.settings.R2_BUCKET_NAME}.{self.settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/{object_key}"
+        return f"https://{self.settings.R2_BUCKET_NAME}.{self.settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/{object_key}"  # noqa: E501
 
 
 # Singleton instance

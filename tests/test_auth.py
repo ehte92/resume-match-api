@@ -6,6 +6,7 @@ user registration, login, token refresh, and protected routes.
 """
 
 from fastapi.testclient import TestClient
+
 from app.models.user import User
 
 

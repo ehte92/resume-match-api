@@ -9,6 +9,9 @@ A modern, production-ready FastAPI backend for AI-powered resume optimization. T
 ## Features
 
 - 🔐 **JWT Authentication** - Secure user registration, login, and token refresh
+- 📄 **Resume Management** - Upload, parse, and store PDF/DOCX resumes with R2 integration
+- ☁️ **Cloud Storage** - Cloudflare R2 integration for scalable file storage
+- 🔗 **Presigned URLs** - Automatic generation of time-limited download links
 - 🗄️ **PostgreSQL Database** - Robust data persistence with SQLAlchemy ORM
 - 🔄 **Database Migrations** - Version-controlled schema changes with Alembic
 - ✅ **Comprehensive Testing** - 91% test coverage with pytest
@@ -45,20 +48,25 @@ backend/
 ├── app/
 │   ├── routers/          # API route handlers
 │   │   ├── auth.py       # Authentication endpoints
+│   │   ├── resume.py     # Resume management endpoints (NEW - Phase 11)
 │   │   └── health.py     # Health check endpoints
 │   ├── models/           # SQLAlchemy database models
 │   │   ├── user.py       # User model
-│   │   ├── resume.py     # Resume model (NEW - Phase 9)
-│   │   └── resume_analysis.py  # Analysis model (NEW - Phase 9)
+│   │   ├── resume.py     # Resume model (Phase 9)
+│   │   └── resume_analysis.py  # Analysis model (Phase 9)
 │   ├── schemas/          # Pydantic schemas for validation
 │   │   ├── auth.py       # Auth request/response schemas
 │   │   ├── user.py       # User schemas
-│   │   ├── resume.py     # Resume schemas (NEW - Phase 9)
-│   │   └── analysis.py   # Analysis schemas (NEW - Phase 9)
+│   │   ├── resume.py     # Resume schemas (Phase 9)
+│   │   └── analysis.py   # Analysis schemas (Phase 9)
 │   ├── services/         # Business logic layer
-│   │   └── auth_service.py
+│   │   ├── auth_service.py
+│   │   ├── resume_service.py    # Resume CRUD operations (NEW - Phase 11)
+│   │   ├── resume_parser.py     # PDF/DOCX parsing (Phase 10)
+│   │   └── storage_service.py   # R2 storage operations (NEW - Phase 11)
 │   ├── utils/            # Utility functions
-│   │   └── security.py   # Password hashing, JWT tokens
+│   │   ├── security.py   # Password hashing, JWT tokens
+│   │   └── file_handler.py      # File validation and upload (Phase 10)
 │   ├── config.py         # Application settings
 │   ├── database.py       # Database connection and session
 │   ├── dependencies.py   # FastAPI dependencies (auth)
@@ -180,6 +188,17 @@ Configure these variables in your `.env` file:
 
 - `HOST` - Server host (default: `0.0.0.0`)
 - `PORT` - Server port (default: `8000`)
+
+### File Storage (Cloudflare R2)
+
+- `STORAGE_BACKEND` - Storage backend to use (`local` or `r2`, default: `local`)
+- `R2_ACCOUNT_ID` - Cloudflare R2 account ID
+- `R2_ACCESS_KEY_ID` - R2 access key ID
+- `R2_SECRET_ACCESS_KEY` - R2 secret access key
+- `R2_BUCKET_NAME` - R2 bucket name for resume storage
+- `R2_ENDPOINT_URL` - R2 endpoint URL (e.g., `https://<account_id>.r2.cloudflarestorage.com`)
+- `MAX_UPLOAD_SIZE_MB` - Maximum file upload size in MB (default: `5`)
+- `ALLOWED_UPLOAD_TYPES` - Allowed file MIME types (default: `["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]`)
 
 ## Running the Server
 
@@ -376,6 +395,186 @@ Authorization: Bearer <access_token>
 }
 ```
 
+### Resume Management
+
+**Note:** All resume endpoints require authentication. Include the access token in the Authorization header.
+
+#### Upload Resume
+
+Upload a PDF or DOCX resume file. The file will be automatically parsed and stored in R2 (if configured).
+
+```http
+POST /api/resumes/upload
+Authorization: Bearer <access_token>
+Content-Type: multipart/form-data
+
+file=@resume.pdf
+```
+
+**Constraints:**
+- File types: PDF (`.pdf`) or DOCX (`.docx`)
+- Maximum size: 5MB
+- Supported formats: `application/pdf`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+
+**Response:** `201 Created`
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "user_id": "550e8400-e29b-41d4-a716-446655440001",
+  "file_name": "john_doe_resume.pdf",
+  "file_type": "pdf",
+  "file_size": 245780,
+  "file_path": "/tmp/resume_uploads/550e8400-e29b-41d4-a716-446655440000.pdf",
+  "storage_backend": "r2",
+  "download_url": "https://r2.example.com/presigned/resumes/550e8400-e29b-41d4-a716-446655440001/550e8400-e29b-41d4-a716-446655440000.pdf?expires=3600",
+  "parsed_text": "JOHN DOE\nSoftware Engineer\n...",
+  "parsed_data": {
+    "email": "john@example.com",
+    "phone": "+1-555-0123",
+    "linkedin": "linkedin.com/in/johndoe",
+    "sections": {
+      "experience": ["Senior Software Engineer at ABC Corp..."],
+      "education": ["BS Computer Science, University of XYZ"],
+      "skills": ["Python", "JavaScript", "AWS"]
+    }
+  },
+  "created_at": "2025-10-15T10:30:00",
+  "updated_at": null
+}
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Invalid file type or size exceeded
+- `401 Unauthorized` - Missing or invalid token
+- `500 Internal Server Error` - Upload or parsing failed
+
+#### List User's Resumes
+
+Get a paginated list of all resumes uploaded by the current user.
+
+```http
+GET /api/resumes/?page=1&page_size=10
+Authorization: Bearer <access_token>
+```
+
+**Query Parameters:**
+- `page` (optional) - Page number, 1-indexed (default: 1)
+- `page_size` (optional) - Items per page, max 100 (default: 10)
+
+**Response:** `200 OK`
+
+```json
+{
+  "resumes": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "user_id": "550e8400-e29b-41d4-a716-446655440001",
+      "file_name": "john_doe_resume.pdf",
+      "file_type": "pdf",
+      "file_size": 245780,
+      "file_path": "/tmp/resume_uploads/550e8400-e29b-41d4-a716-446655440000.pdf",
+      "storage_backend": "r2",
+      "download_url": "https://r2.example.com/presigned/resumes/...",
+      "parsed_text": "JOHN DOE\n...",
+      "parsed_data": { "email": "john@example.com", ... },
+      "created_at": "2025-10-15T10:30:00",
+      "updated_at": null
+    }
+  ],
+  "total": 5,
+  "page": 1,
+  "page_size": 10
+}
+```
+
+#### Get Specific Resume
+
+Retrieve details of a specific resume by ID.
+
+```http
+GET /api/resumes/{resume_id}
+Authorization: Bearer <access_token>
+```
+
+**Response:** `200 OK`
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "user_id": "550e8400-e29b-41d4-a716-446655440001",
+  "file_name": "john_doe_resume.pdf",
+  "file_type": "pdf",
+  "file_size": 245780,
+  "file_path": "/tmp/resume_uploads/550e8400-e29b-41d4-a716-446655440000.pdf",
+  "storage_backend": "r2",
+  "download_url": "https://r2.example.com/presigned/resumes/...",
+  "parsed_text": "JOHN DOE\nSoftware Engineer\n...",
+  "parsed_data": {
+    "email": "john@example.com",
+    "phone": "+1-555-0123",
+    "linkedin": "linkedin.com/in/johndoe",
+    "sections": {
+      "experience": ["Senior Software Engineer at ABC Corp..."],
+      "education": ["BS Computer Science, University of XYZ"],
+      "skills": ["Python", "JavaScript", "AWS"]
+    }
+  },
+  "created_at": "2025-10-15T10:30:00",
+  "updated_at": null
+}
+```
+
+**Error Responses:**
+
+- `404 Not Found` - Resume not found
+- `403 Forbidden` - User doesn't own this resume
+
+#### Delete Resume
+
+Delete a resume and all associated data. This also deletes related analyses and removes the file from R2.
+
+```http
+DELETE /api/resumes/{resume_id}
+Authorization: Bearer <access_token>
+```
+
+**Response:** `204 No Content`
+
+**Error Responses:**
+
+- `404 Not Found` - Resume not found
+- `403 Forbidden` - User doesn't own this resume
+- `500 Internal Server Error` - Deletion failed
+
+#### Generate Download URL
+
+Generate a presigned URL for downloading a resume file from R2 storage (1-hour expiration).
+
+```http
+GET /api/resumes/{resume_id}/download
+Authorization: Bearer <access_token>
+```
+
+**Response:** `200 OK`
+
+```json
+{
+  "url": "https://r2.example.com/presigned/resumes/550e8400-e29b-41d4-a716-446655440001/550e8400-e29b-41d4-a716-446655440000.pdf?expires=3600",
+  "expires_in": 3600,
+  "filename": "john_doe_resume.pdf"
+}
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Resume not stored in R2 (local storage doesn't support download URLs)
+- `404 Not Found` - Resume not found
+- `403 Forbidden` - User doesn't own this resume
+
+**Note:** For R2-stored resumes, the `download_url` is automatically included in resume responses (GET endpoints) with 1-hour expiration. This endpoint is for explicitly generating new URLs.
+
 ## Database Migrations
 
 ### Check Current Migration Version
@@ -500,6 +699,8 @@ mypy app/
 - **Phase 7:** Documentation
 - **Phase 8:** Bcrypt Bug Fix (password truncation to 72 bytes)
 - **Phase 9:** Resume & Analysis Database Models (NO subscription/payment features)
+- **Phase 10:** Resume Parser Service (PDF/DOCX parsing with 81.62% test coverage)
+- **Phase 11:** Resume Upload & Management API with R2 integration
 
 ### Current State
 
@@ -510,7 +711,18 @@ mypy app/
 - ✅ Auto-generated API documentation
 - ✅ Health monitoring endpoints
 - ✅ Resume and Analysis database models
+- ✅ Resume parser for PDF/DOCX files
+- ✅ Resume upload and management API (5 endpoints)
+- ✅ Cloudflare R2 storage integration
+- ✅ Presigned URL generation for secure downloads
 - ✅ 3 database tables: users, resumes, resume_analyses
+
+### Next Steps
+
+- **Phase 12:** Keyword Analyzer Service - Extract and analyze keywords from job descriptions
+- **Phase 13:** ATS Checker Service - Check resume for ATS compatibility
+- **Phase 14:** OpenAI Integration - Generate AI-powered suggestions
+- **Phase 15:** Resume Analysis Endpoints - Complete analysis workflow
 
 ## Troubleshooting
 
