@@ -2,18 +2,20 @@
 Alembic migration environment configuration.
 Connects Alembic to our SQLAlchemy models and database.
 """
+
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+from app.config import get_settings
 
 # Import our database Base and config
 from app.database import Base
-from app.config import get_settings
 
 # Import all models to ensure they're registered with Base.metadata
 from app.models.user import User  # noqa: F401
+
 # Future imports: from app.models.resume import Resume  # noqa: F401
 
 # Get settings
@@ -69,10 +71,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

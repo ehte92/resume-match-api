@@ -7,6 +7,7 @@ This demonstrates the functionality with real-world examples.
 """
 
 import json
+
 from app.services.keyword_analyzer import KeywordAnalyzer
 
 
