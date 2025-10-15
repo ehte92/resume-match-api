@@ -18,7 +18,9 @@ from app.models.resume import Resume
 from app.models.resume_analysis import ResumeAnalysis
 from app.models.user import User
 from app.routers.auth import get_current_user
+from app.config import get_settings
 from app.schemas.analysis import AnalysisListResponse, AnalysisResponse
+from app.services.ai_suggester import AISuggester
 from app.services.ats_checker import ATSChecker
 from app.services.keyword_analyzer import KeywordAnalyzer
 from app.services.resume_parser import ResumeParser
@@ -190,12 +192,41 @@ async def create_analysis(
         ats_result = checker.check_ats_compatibility(resume.parsed_data or {})
         logger.info(f"ATS score: {ats_result['ats_score']}")
 
-        # Step 4: Calculate overall match score (weighted average)
+        # Step 4: Generate AI suggestions (NEW - Phase 14)
+        settings = get_settings()
+        ai_suggestions = []
+        rewritten_bullets = []
+        tokens_used = 0
+
+        if settings.ENABLE_AI_SUGGESTIONS:
+            try:
+                logger.info("Generating AI-powered suggestions...")
+                suggester = AISuggester()
+                ai_result = await suggester.generate_suggestions(
+                    resume_text=resume.parsed_text or "",
+                    job_description=job_description,
+                    missing_keywords=keyword_result["missing_keywords"],
+                    ats_issues=ats_result["issues"],
+                )
+                ai_suggestions = ai_result.get("suggestions", [])
+                rewritten_bullets = ai_result.get("rewritten_bullets", [])
+                tokens_used = ai_result.get("tokens_used", 0)
+                logger.info(
+                    f"AI analysis complete: {len(ai_suggestions)} suggestions, "
+                    f"{len(rewritten_bullets)} rewrites, {tokens_used} tokens used"
+                )
+            except Exception as e:
+                logger.error(f"AI suggestion generation failed: {e}", exc_info=True)
+                # Graceful degradation - analysis continues without AI
+        else:
+            logger.info("AI suggestions disabled via config")
+
+        # Step 5: Calculate overall match score (weighted average)
         # 60% keyword matching + 40% ATS compatibility
         match_score = (keyword_result["score"] * 0.6) + (ats_result["ats_score"] * 0.4)
         logger.info(f"Overall match score: {match_score}")
 
-        # Step 5: Create analysis record
+        # Step 6: Create analysis record
         processing_time = int((time.time() - start_time) * 1000)
         logger.info("Creating analysis record...")
 
@@ -211,8 +242,9 @@ async def create_analysis(
             matching_keywords=keyword_result["matched_keywords"],
             missing_keywords=keyword_result["missing_keywords"],
             ats_issues=ats_result["issues"],
-            ai_suggestions=None,  # Phase 14 - OpenAI integration
-            rewritten_bullets=None,  # Phase 14 - OpenAI integration
+            ai_suggestions=ai_suggestions,  # NEW: AI-generated suggestions
+            rewritten_bullets=rewritten_bullets,  # NEW: AI-rewritten bullets
+            openai_tokens_used=tokens_used,  # NEW: Token usage tracking
             processing_time_ms=processing_time,
         )
         db.add(analysis)

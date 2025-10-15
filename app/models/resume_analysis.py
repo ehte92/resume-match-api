@@ -90,6 +90,9 @@ class ResumeAnalysis(Base):
     ai_suggestions = Column(JSONB, nullable=True)  # [{"type": "...", "suggestion": "...", ...}]
     rewritten_bullets = Column(JSONB, nullable=True)  # [{"original": "...", "improved": "..."}]
 
+    # AI-related metrics
+    openai_tokens_used = Column(Integer, nullable=True, default=0)  # Tokens consumed by AI API
+
     processing_time_ms = Column(Integer, nullable=True)  # Time in milliseconds
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 

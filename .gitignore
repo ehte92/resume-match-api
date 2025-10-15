@@ -8,9 +8,14 @@ venv/
 env/
 ENV/
 
-# Environment
+# Environment - NEVER commit files with secrets!
 .env
 .env.local
+.env.*.local
+.env.development
+.env.production
+.env.staging
+.env.test
 
 # IDE
 .vscode/

@@ -52,6 +52,16 @@ class Settings(BaseSettings):
     R2_REGION: str = "auto"  # R2 uses "auto" for region
     R2_PUBLIC_URL: str = ""  # Optional: Custom domain for public access
 
+    # OpenRouter AI Configuration
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_MODEL: str = "openai/gpt-4o-mini"
+    OPENROUTER_MAX_TOKENS: int = 2000
+    OPENROUTER_TEMPERATURE: float = 0.7
+    OPENROUTER_SITE_URL: str = "https://resumematch.ai"
+    OPENROUTER_APP_NAME: str = "ResumeMatch-AI"
+    ENABLE_AI_SUGGESTIONS: bool = True
+
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
     )
