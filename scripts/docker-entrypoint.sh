@@ -27,18 +27,13 @@ echo ""
 # ==========================================
 echo "🔄 Running database migrations..."
 
-# Try to run migrations, but don't fail if it doesn't work
-# This allows the app to start even if migrations fail
-if command -v alembic &> /dev/null; then
-    if alembic upgrade head 2>&1; then
-        echo "✅ Migrations applied successfully"
-    else
-        echo "⚠️  WARNING: Migration failed, but continuing startup"
-        echo "   The application will attempt to connect to the database."
-        echo "   If tables don't exist, API calls will fail."
-    fi
+# Use python -m instead of alembic binary to avoid execution issues
+if python -m alembic upgrade head 2>&1; then
+    echo "✅ Migrations applied successfully"
 else
-    echo "⚠️  WARNING: alembic not found, skipping migrations"
+    echo "⚠️  WARNING: Migration failed, but continuing startup"
+    echo "   The application will attempt to connect to the database."
+    echo "   If tables don't exist, API calls will fail."
 fi
 
 echo ""
@@ -51,8 +46,11 @@ echo "Command: $@"
 echo "========================================"
 echo ""
 
-# Execute the main command (passed as arguments to this script)
-# This will be either:
-# - Development: uvicorn with --reload
-# - Production: gunicorn with multiple workers
-exec "$@"
+# Execute the main command
+# Use python -m for gunicorn to avoid binary execution issues
+if [ "$1" = "gunicorn" ]; then
+    shift  # Remove 'gunicorn' from arguments
+    exec python -m gunicorn "$@"
+else
+    exec "$@"
+fi
