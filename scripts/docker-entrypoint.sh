@@ -5,9 +5,11 @@
 # This script runs before the main application starts
 #
 # Responsibilities:
-# 1. Wait for PostgreSQL database to be ready
-# 2. Run Alembic database migrations
-# 3. Start the application with provided command
+# 1. Run Alembic database migrations
+# 2. Start the application with provided command
+#
+# Note: Database connectivity is handled by SQLAlchemy.
+# If database is unavailable, migrations will fail with clear error.
 #
 # Usage: Called automatically by Dockerfile ENTRYPOINT
 
@@ -21,47 +23,7 @@ echo "Python version: $(python --version)"
 echo ""
 
 # ==========================================
-# Step 1: Wait for Database to be Ready
-# ==========================================
-echo "🔍 Checking database connection..."
-
-# Extract database host from DATABASE_URL
-# Format: postgresql://user:pass@host:port/dbname
-DB_HOST=$(echo $DATABASE_URL | sed -E 's/.*@([^:]+).*/\1/')
-DB_PORT=$(echo $DATABASE_URL | sed -E 's/.*:([0-9]+)\/.*/\1/')
-
-# Default to 5432 if port not found in URL
-if [ -z "$DB_PORT" ] || [ "$DB_PORT" = "$DATABASE_URL" ]; then
-    DB_PORT=5432
-fi
-
-echo "Database host: $DB_HOST:$DB_PORT"
-
-# Wait for PostgreSQL to accept connections
-MAX_RETRIES=30
-RETRY_COUNT=0
-RETRY_INTERVAL=2
-
-until PGPASSWORD=$PGPASSWORD psql -h "$DB_HOST" -U "postgres" -p "$DB_PORT" -c '\q' 2>/dev/null || [ $RETRY_COUNT -eq $MAX_RETRIES ]; do
-    RETRY_COUNT=$((RETRY_COUNT + 1))
-    echo "⏳ Waiting for database... (attempt $RETRY_COUNT/$MAX_RETRIES)"
-    sleep $RETRY_INTERVAL
-done
-
-if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-    echo "❌ ERROR: Could not connect to database after $MAX_RETRIES attempts"
-    echo "   Please check:"
-    echo "   - DATABASE_URL is correct"
-    echo "   - Database server is running"
-    echo "   - Network connectivity"
-    exit 1
-fi
-
-echo "✅ Database is ready!"
-echo ""
-
-# ==========================================
-# Step 2: Run Database Migrations
+# Step 1: Run Database Migrations
 # ==========================================
 echo "🔄 Running database migrations..."
 
@@ -86,7 +48,7 @@ fi
 echo ""
 
 # ==========================================
-# Step 3: Start Application
+# Step 2: Start Application
 # ==========================================
 echo "🚀 Starting application..."
 echo "Command: $@"
