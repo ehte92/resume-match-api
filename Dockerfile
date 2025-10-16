@@ -73,11 +73,12 @@ COPY alembic/ /app/alembic/
 COPY alembic.ini /app/alembic.ini
 COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
 
-# Make entrypoint script executable
-RUN chmod +x /app/docker-entrypoint.sh
+# Make entrypoint script and venv binaries executable
+RUN chmod +x /app/docker-entrypoint.sh && \
+    chmod +x /venv/bin/* 2>/dev/null || true
 
 # Change ownership to non-root user
-RUN chown -R appuser:appuser /app
+RUN chown -R appuser:appuser /app /venv
 
 # Switch to non-root user
 USER appuser

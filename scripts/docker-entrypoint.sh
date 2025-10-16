@@ -23,26 +23,22 @@ echo "Python version: $(python --version)"
 echo ""
 
 # ==========================================
-# Step 1: Run Database Migrations
+# Step 1: Run Database Migrations (Optional)
 # ==========================================
 echo "🔄 Running database migrations..."
 
-# Check if alembic is available
-if ! command -v alembic &> /dev/null; then
-    echo "❌ ERROR: alembic not found in PATH"
-    exit 1
-fi
-
-# Run migrations with error handling
-if alembic upgrade head; then
-    echo "✅ Migrations applied successfully"
+# Try to run migrations, but don't fail if it doesn't work
+# This allows the app to start even if migrations fail
+if command -v alembic &> /dev/null; then
+    if alembic upgrade head 2>&1; then
+        echo "✅ Migrations applied successfully"
+    else
+        echo "⚠️  WARNING: Migration failed, but continuing startup"
+        echo "   The application will attempt to connect to the database."
+        echo "   If tables don't exist, API calls will fail."
+    fi
 else
-    echo "❌ ERROR: Migration failed"
-    echo "   This may happen if:"
-    echo "   - Database schema is corrupted"
-    echo "   - Migration scripts have errors"
-    echo "   - Database permissions are insufficient"
-    exit 1
+    echo "⚠️  WARNING: alembic not found, skipping migrations"
 fi
 
 echo ""
