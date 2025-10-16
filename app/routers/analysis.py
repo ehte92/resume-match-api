@@ -10,7 +10,9 @@ import time
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -34,10 +36,13 @@ from app.utils.file_handler import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/create", response_model=AnalysisResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 async def create_analysis(
+    request: Request,
     file: Optional[UploadFile] = File(None),
     resume_id: Optional[UUID] = Form(None),
     job_description: str = Form(...),
@@ -274,7 +279,9 @@ async def create_analysis(
 
 
 @router.get("/", response_model=AnalysisListResponse)
+@limiter.limit("100/minute")
 async def list_analyses(
+    request: Request,
     page: int = 1,
     page_size: int = 10,
     current_user: User = Depends(get_current_user),
@@ -322,7 +329,9 @@ async def list_analyses(
 
 
 @router.get("/{analysis_id}", response_model=AnalysisResponse)
+@limiter.limit("100/minute")
 async def get_analysis(
+    request: Request,
     analysis_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -367,7 +376,9 @@ async def get_analysis(
 
 
 @router.delete("/{analysis_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("100/minute")
 async def delete_analysis(
+    request: Request,
     analysis_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

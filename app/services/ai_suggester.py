@@ -119,7 +119,8 @@ class AISuggester:
         # Limit to top 5 issues
         issues_text = "\n".join(
             [
-                f"- {issue.get('issue', 'Unknown issue')} (Severity: {issue.get('severity', 'unknown')})"
+                f"- {issue.get('issue', 'Unknown issue')} "
+                f"(Severity: {issue.get('severity', 'unknown')})"
                 for issue in ats_issues[:5]
             ]
         )

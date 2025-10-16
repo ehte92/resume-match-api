@@ -6,7 +6,9 @@ Provides user registration, login, token refresh, and profile access.
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_current_user, get_db
@@ -17,6 +19,7 @@ from app.services import auth_service
 from app.utils.security import create_access_token, create_refresh_token, verify_token
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post(
@@ -26,7 +29,8 @@ router = APIRouter()
     summary="Register a new user",
     response_description="User successfully created",
 )
-def register(user_data: UserCreate, db: Session = Depends(get_db)) -> Any:
+@limiter.limit("5/minute")
+def register(request: Request, user_data: UserCreate, db: Session = Depends(get_db)) -> Any:
     """
     Register a new user account.
 
@@ -49,7 +53,8 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)) -> Any:
     summary="Login to get access token",
     response_description="Authentication successful",
 )
-def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> Any:
+@limiter.limit("5/minute")
+def login(request: Request, credentials: LoginRequest, db: Session = Depends(get_db)) -> Any:
     """
     Authenticate user and return JWT tokens.
 
@@ -93,7 +98,10 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> Any:
     summary="Refresh access token",
     response_description="New tokens generated",
 )
-def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_db)) -> Any:
+@limiter.limit("10/minute")
+def refresh_token(
+    request: Request, token_request: RefreshTokenRequest, db: Session = Depends(get_db)
+) -> Any:
     """
     Refresh access token using refresh token.
 
@@ -105,7 +113,7 @@ def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_db)) -
         401: Invalid or expired refresh token
     """
     # Verify refresh token
-    payload = verify_token(request.refresh_token)
+    payload = verify_token(token_request.refresh_token)
 
     # Check token type
     token_type = payload.get("type")
@@ -160,7 +168,8 @@ def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_db)) -
     summary="Get current user profile",
     response_description="Current user data",
 )
-def get_current_user_info(current_user: User = Depends(get_current_user)) -> Any:
+@limiter.limit("100/minute")
+def get_current_user_info(request: Request, current_user: User = Depends(get_current_user)) -> Any:
     """
     Get current authenticated user's profile.
 

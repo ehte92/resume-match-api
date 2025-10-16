@@ -5,12 +5,20 @@ Configures CORS, includes routers, and defines the main app instance.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from app.config import get_settings
+from app.middleware.timing import TimingMiddleware
 from app.routers import analysis, auth, health, resume
 
 # Get settings
 settings = get_settings()
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
 
 # Create FastAPI app instance
 app = FastAPI(
@@ -36,7 +44,12 @@ app = FastAPI(
     ],
 )
 
-# Configure CORS middleware
+# Register rate limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Configure middleware (order matters - last added is executed first)
+# 1. CORS - handles cross-origin requests
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -44,6 +57,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 2. GZip compression - compresses responses > 1KB
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# 3. Timing - tracks request processing time
+app.add_middleware(TimingMiddleware)
 
 # Include routers
 app.include_router(health.router, tags=["health"])
