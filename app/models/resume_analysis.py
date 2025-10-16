@@ -65,13 +65,13 @@ class ResumeAnalysis(Base):
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,  # Allow NULL for guest analyses
         index=True,
     )
     resume_id = Column(
         UUID(as_uuid=True),
         ForeignKey("resumes.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,  # Allow NULL for guest analyses
         index=True,
     )
     job_description = Column(Text, nullable=False)

@@ -39,6 +39,160 @@ router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
 
 
+@router.post("/create-guest", response_model=AnalysisResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
+async def create_guest_analysis(
+    request: Request,
+    file: UploadFile = File(...),
+    job_description: str = Form(...),
+    job_title: Optional[str] = Form(None),
+    company_name: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    """
+    Create a resume analysis for anonymous/guest users (Landing Page Endpoint).
+
+    This endpoint allows anyone to analyze their resume without authentication.
+    The analysis is stored in the database but the resume file is NOT persisted.
+
+    Perfect for the "Quick Analysis" feature on the landing page where users
+    want instant feedback without creating an account.
+
+    Args:
+        file: Resume file (PDF or DOCX, max 5MB) - required
+        job_description: Job description text (required)
+        job_title: Optional job title
+        company_name: Optional company name
+        db: Database session
+
+    Returns:
+        AnalysisResponse with complete analysis results (user_id and resume_id will be null)
+
+    Raises:
+        400: If file type is invalid
+        413: If file size exceeds 5MB
+        422: If validation fails
+        500: If analysis processing fails
+    """
+    start_time = time.time()
+    logger.info("Starting guest analysis (no authentication)")
+
+    temp_path = None
+
+    try:
+        # Step 1: Validate file type
+        if not validate_file_type(file.content_type):
+            logger.warning(f"Invalid file type: {file.content_type}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid file type. Only PDF and DOCX files are supported.",
+            )
+
+        # Step 2: Save temp file
+        temp_path = await save_temp_file(file)
+        logger.info(f"Saved temp file for guest analysis: {temp_path}")
+
+        # Step 3: Parse resume (in-memory only, not stored to database)
+        logger.info("Parsing guest resume...")
+        parser = ResumeParser()
+        file_type_simple = "pdf" if "pdf" in file.content_type else "docx"
+        parsed_resume = parser.parse(temp_path, file_type_simple)
+
+        parsed_text = parsed_resume.get("raw_text", "")
+        parsed_data = parsed_resume
+
+        # Step 4: Keyword analysis
+        logger.info("Running keyword analysis for guest...")
+        analyzer = KeywordAnalyzer()
+        keyword_result = analyzer.calculate_match_score(parsed_text, job_description)
+        logger.info(f"Keyword match score: {keyword_result['score']}")
+
+        # Step 5: ATS compatibility check
+        logger.info("Running ATS compatibility check for guest...")
+        checker = ATSChecker()
+        ats_result = checker.check_ats_compatibility(parsed_data)
+        logger.info(f"ATS score: {ats_result['ats_score']}")
+
+        # Step 6: AI suggestions (optional, based on settings)
+        settings = get_settings()
+        ai_suggestions = []
+        rewritten_bullets = []
+        tokens_used = 0
+
+        if settings.ENABLE_AI_SUGGESTIONS:
+            try:
+                logger.info("Generating AI-powered suggestions for guest...")
+                suggester = AISuggester()
+                ai_result = await suggester.generate_suggestions(
+                    resume_text=parsed_text,
+                    job_description=job_description,
+                    missing_keywords=keyword_result["missing_keywords"],
+                    ats_issues=ats_result["issues"],
+                )
+                ai_suggestions = ai_result.get("suggestions", [])
+                rewritten_bullets = ai_result.get("rewritten_bullets", [])
+                tokens_used = ai_result.get("tokens_used", 0)
+                logger.info(
+                    f"AI analysis complete: {len(ai_suggestions)} suggestions, "
+                    f"{len(rewritten_bullets)} rewrites, {tokens_used} tokens used"
+                )
+            except Exception as e:
+                logger.error(f"AI suggestion generation failed for guest: {e}", exc_info=True)
+                # Graceful degradation - analysis continues without AI
+        else:
+            logger.info("AI suggestions disabled via config")
+
+        # Step 7: Calculate overall match score
+        match_score = (keyword_result["score"] * 0.6) + (ats_result["ats_score"] * 0.4)
+        logger.info(f"Overall match score for guest: {match_score}")
+
+        # Step 8: Create analysis record (with NULL user_id and resume_id for guest)
+        processing_time = int((time.time() - start_time) * 1000)
+        logger.info("Creating guest analysis record...")
+
+        analysis = ResumeAnalysis(
+            user_id=None,  # Guest analysis has no user
+            resume_id=None,  # Guest analysis has no stored resume
+            job_description=job_description,
+            job_title=job_title,
+            company_name=company_name,
+            match_score=round(match_score, 2),
+            ats_score=ats_result["ats_score"],
+            semantic_similarity=keyword_result["score"],
+            matching_keywords=keyword_result["matched_keywords"],
+            missing_keywords=keyword_result["missing_keywords"],
+            ats_issues=ats_result["issues"],
+            ai_suggestions=ai_suggestions,
+            rewritten_bullets=rewritten_bullets,
+            openai_tokens_used=tokens_used,
+            processing_time_ms=processing_time,
+        )
+        db.add(analysis)
+        db.commit()
+        db.refresh(analysis)
+
+        logger.info(
+            f"Guest analysis created successfully: ID={analysis.id}, "
+            f"Score={analysis.match_score}, Time={processing_time}ms"
+        )
+
+        return analysis
+
+    except Exception as e:
+        logger.error(f"Error during guest analysis: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Analysis failed: {str(e)}",
+        )
+
+    finally:
+        # Always cleanup temp file for guest analyses (never persist)
+        if temp_path:
+            delete_temp_file(temp_path)
+            logger.info("Guest temp file cleaned up")
+
+
 @router.post("/create", response_model=AnalysisResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/minute")
 async def create_analysis(
