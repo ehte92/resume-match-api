@@ -24,27 +24,38 @@ limiter = Limiter(key_func=get_remote_address)
 
 @router.post(
     "/register",
-    response_model=UserResponse,
+    response_model=TokenResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user",
-    response_description="User successfully created",
+    response_description="User successfully created with authentication tokens",
 )
 @limiter.limit("5/minute")
 def register(request: Request, user_data: UserCreate, db: Session = Depends(get_db)) -> Any:
     """
-    Register a new user account.
+    Register a new user account and return authentication tokens.
 
     - **email**: Valid email address (unique)
     - **password**: Password (minimum 8 characters)
     - **full_name**: User's full name (optional)
 
-    Returns the created user data (without password).
+    Returns authentication tokens and user data (auto-login after registration).
 
     Raises:
         400: Email already registered
     """
     user = auth_service.create_user(db, user_data)
-    return user
+
+    # Create tokens for auto-login
+    access_token = create_access_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+
+    # Return tokens and user data
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        user=UserResponse.model_validate(user),
+    )
 
 
 @router.post(
