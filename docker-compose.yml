@@ -1,0 +1,78 @@
+version: '3.8'
+
+# ==========================================
+# Docker Compose Configuration
+# ==========================================
+# For local development and testing with external database
+#
+# Usage:
+#   Development: docker-compose up --build
+#   Stop:        docker-compose down
+#   Logs:        docker-compose logs -f api
+#
+# Requirements:
+#   - .env file with DATABASE_URL pointing to external database
+#   - All environment variables from .env.example
+
+services:
+  # ==========================================
+  # FastAPI Backend Service
+  # ==========================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: resume-optimizer-api
+
+    # Port mapping
+    ports:
+      - "8000:8000"
+
+    # Environment variables from .env file
+    env_file:
+      - .env
+
+    # Additional environment variables
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+
+    # Volume mounts for development (hot-reload)
+    # Comment out for production-like testing
+    volumes:
+      - ./app:/app/app:ro          # Mount app code (read-only)
+      - ./alembic:/app/alembic:ro  # Mount migrations (read-only)
+
+    # Override default command for development with hot-reload
+    # Comment out to use production gunicorn (from Dockerfile CMD)
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Resource limits (optional, adjust as needed)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+# ==========================================
+# Networks (optional - default is fine)
+# ==========================================
+# Uncomment if you want to create a custom network
+# networks:
+#   default:
+#     name: resume-optimizer-network

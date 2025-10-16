@@ -1,0 +1,89 @@
+# ==========================================
+# Docker Ignore File
+# ==========================================
+# Excludes unnecessary files from Docker build context
+# Reduces image size and build time significantly
+
+# Python virtual environment
+venv/
+env/
+.venv/
+.env/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+*.cover
+.cache
+
+# Development and IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+.gitignore
+.github/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Test files and fixtures
+tests/
+test_*.py
+*_test.py
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Environment files (secrets)
+.env
+.env.*
+!.env.example
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# CI/CD
+.circleci/
+.travis.yml
+
+# Misc development files
+scripts/local_*.sh
+scripts/dev_*.sh
+Makefile
+
+# Backend-specific temporary files
+backend/
+
+# Test coverage reports
+.ruff_cache/
