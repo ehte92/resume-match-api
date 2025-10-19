@@ -61,8 +61,12 @@ class AnalysisResponse(AnalysisBase):
     """
 
     id: UUID = Field(..., description="Analysis UUID")
-    user_id: Optional[UUID] = Field(None, description="User UUID who requested this analysis (null for guest)")
-    resume_id: Optional[UUID] = Field(None, description="Resume UUID that was analyzed (null for guest)")
+    user_id: Optional[UUID] = Field(
+        None, description="User UUID who requested this analysis (null for guest)"
+    )
+    resume_id: Optional[UUID] = Field(
+        None, description="Resume UUID that was analyzed (null for guest)"
+    )
 
     # Scores
     match_score: Optional[Decimal] = Field(

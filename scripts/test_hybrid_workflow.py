@@ -295,9 +295,7 @@ def test_validation_errors(token, resume_id):
     print_step(6, "Test: Neither file NOR resume_id provided (should fail)")
     data = {"job_description": "Test job description"}
 
-    response = requests.post(
-        f"{BASE_URL}{API_PREFIX}/analyses/create", headers=headers, data=data
-    )
+    response = requests.post(f"{BASE_URL}{API_PREFIX}/analyses/create", headers=headers, data=data)
 
     if response.status_code == 400:
         print_success("Correctly rejected: neither file nor resume_id provided")
@@ -311,9 +309,7 @@ def test_validation_errors(token, resume_id):
         "job_description": "Test job description",
     }
 
-    response = requests.post(
-        f"{BASE_URL}{API_PREFIX}/analyses/create", headers=headers, data=data
-    )
+    response = requests.post(f"{BASE_URL}{API_PREFIX}/analyses/create", headers=headers, data=data)
 
     if response.status_code == 404:
         print_success("Correctly rejected: invalid resume_id")
@@ -398,7 +394,9 @@ def main():
     if resume_id == resume_id_2:
         print_success(f"\n✨ DUPLICATE DETECTION CONFIRMED! Same resume_id reused: {resume_id}")
     else:
-        print_error(f"\n❌ Duplicate detection failed: Different resume_ids: {resume_id} vs {resume_id_2}")
+        print_error(
+            f"\n❌ Duplicate detection failed: Different resume_ids: {resume_id} vs {resume_id_2}"
+        )
 
     # Step 4: Power User Workflow (Workflow 3)
     analysis_id_3 = test_power_user_workflow(token, resume_id)

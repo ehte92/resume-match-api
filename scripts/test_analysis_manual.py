@@ -251,9 +251,7 @@ def test_delete_analysis(token, analysis_id):
         print_success("Analysis deleted successfully")
 
         # Verify deletion
-        response2 = requests.get(
-            f"{BASE_URL}{API_PREFIX}/analyses/{analysis_id}", headers=headers
-        )
+        response2 = requests.get(f"{BASE_URL}{API_PREFIX}/analyses/{analysis_id}", headers=headers)
         if response2.status_code == 404:
             print_success("Verified: Analysis no longer exists")
             return True

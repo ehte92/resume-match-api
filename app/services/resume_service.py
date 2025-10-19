@@ -360,7 +360,9 @@ class ResumeService:
 
             return {
                 "download_url": presigned_url,
-                "expires_at": (datetime.utcnow() + timedelta(seconds=expiration_seconds)).isoformat(),
+                "expires_at": (
+                    datetime.utcnow() + timedelta(seconds=expiration_seconds)
+                ).isoformat(),
                 "filename": resume.file_name,
             }
 
