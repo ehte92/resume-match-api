@@ -5,6 +5,7 @@ Manages resume upload, parsing, storage, and retrieval with R2 integration.
 
 import logging
 import os
+from datetime import datetime, timedelta
 from typing import Dict, List, Tuple
 from uuid import UUID
 
@@ -333,7 +334,7 @@ class ResumeService:
             user_id: UUID of the requesting user
 
         Returns:
-            Dict with 'url' and 'expires_in' keys
+            Dict with 'download_url', 'expires_at', and 'filename' keys
 
         Raises:
             HTTPException: 404 if not found, 403 if not owner, 400 if not in R2
@@ -358,8 +359,8 @@ class ResumeService:
             logger.info(f"Generated download URL for resume {resume_id}")
 
             return {
-                "url": presigned_url,
-                "expires_in": expiration_seconds,
+                "download_url": presigned_url,
+                "expires_at": (datetime.utcnow() + timedelta(seconds=expiration_seconds)).isoformat(),
                 "filename": resume.file_name,
             }
 
