@@ -81,6 +81,9 @@ class Resume(Base):
     # Relationships
     user = relationship("User", back_populates="resumes")
     analyses = relationship("ResumeAnalysis", back_populates="resume", cascade="all, delete-orphan")
+    cover_letters = relationship(
+        "CoverLetter", back_populates="resume", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         """String representation of Resume for debugging."""
