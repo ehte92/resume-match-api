@@ -52,9 +52,7 @@ class PasswordChangeRequest(BaseModel):
     """
 
     old_password: str = Field(..., description="Current password for verification")
-    new_password: str = Field(
-        ..., min_length=8, description="New password (minimum 8 characters)"
-    )
+    new_password: str = Field(..., min_length=8, description="New password (minimum 8 characters)")
 
     model_config = ConfigDict(
         json_schema_extra={

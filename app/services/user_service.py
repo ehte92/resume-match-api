@@ -31,9 +31,7 @@ def get_user_profile(db: Session, user_id: UUID) -> Optional[User]:
     return db.query(User).filter(User.id == user_id).first()
 
 
-def update_user_profile(
-    db: Session, user_id: UUID, profile_data: UserProfileUpdate
-) -> User:
+def update_user_profile(db: Session, user_id: UUID, profile_data: UserProfileUpdate) -> User:
     """
     Update user profile information.
 
@@ -59,9 +57,7 @@ def update_user_profile(
     # Get user from database
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     # Update full_name if provided
     if profile_data.full_name is not None:
@@ -72,9 +68,7 @@ def update_user_profile(
         # Check if new email is different from current email
         if profile_data.email != user.email:
             # Check if email already exists
-            existing_user = (
-                db.query(User).filter(User.email == profile_data.email).first()
-            )
+            existing_user = db.query(User).filter(User.email == profile_data.email).first()
             if existing_user:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -95,9 +89,7 @@ def update_user_profile(
         )
 
 
-def change_password(
-    db: Session, user_id: UUID, old_password: str, new_password: str
-) -> User:
+def change_password(db: Session, user_id: UUID, old_password: str, new_password: str) -> User:
     """
     Change user password after verifying old password.
 
@@ -121,9 +113,7 @@ def change_password(
     # Get user from database
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     # Verify old password
     if not verify_password(old_password, user.password_hash):
@@ -179,9 +169,7 @@ def delete_user_account(db: Session, user_id: UUID, password: str) -> bool:
     # Get user from database
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     # Verify password
     if not verify_password(password, user.password_hash):
