@@ -12,7 +12,7 @@ from slowapi.util import get_remote_address
 
 from app.config import get_settings
 from app.middleware.timing import TimingMiddleware
-from app.routers import analysis, auth, health, resume
+from app.routers import analysis, auth, health, resume, user
 
 # Get settings
 settings = get_settings()
@@ -32,6 +32,10 @@ app = FastAPI(
         {
             "name": "authentication",
             "description": "User authentication and authorization endpoints",
+        },
+        {
+            "name": "users",
+            "description": "User profile and settings management endpoints",
         },
         {
             "name": "resumes",
@@ -67,6 +71,7 @@ app.add_middleware(TimingMiddleware)
 # Include routers
 app.include_router(health.router, tags=["health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
+app.include_router(user.router, prefix="/api/users", tags=["users"])
 app.include_router(resume.router, prefix="/api/resumes", tags=["resumes"])
 app.include_router(analysis.router, prefix="/api/analyses", tags=["analyses"])
 
