@@ -12,7 +12,7 @@ from slowapi.util import get_remote_address
 
 from app.config import get_settings
 from app.middleware.timing import TimingMiddleware
-from app.routers import analysis, auth, cover_letter, health, resume, user
+from app.routers import analysis, auth, cover_letter, cover_letter_template, health, resume, user
 
 # Get settings
 settings = get_settings()
@@ -49,6 +49,10 @@ app = FastAPI(
             "name": "cover-letters",
             "description": "AI-powered cover letter generation and management endpoints",
         },
+        {
+            "name": "cover-letter-templates",
+            "description": "Cover letter template management endpoints (system and user templates)",
+        },
     ],
 )
 
@@ -80,6 +84,7 @@ app.include_router(user.router, prefix="/api/users", tags=["users"])
 app.include_router(resume.router, prefix="/api/resumes", tags=["resumes"])
 app.include_router(analysis.router, prefix="/api/analyses", tags=["analyses"])
 app.include_router(cover_letter.router, prefix="/api/cover-letters", tags=["cover-letters"])
+app.include_router(cover_letter_template.router, prefix="/api/cover-letter-templates", tags=["cover-letter-templates"])
 
 
 @app.on_event("startup")
