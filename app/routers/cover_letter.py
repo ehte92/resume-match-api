@@ -11,6 +11,9 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
+from fastapi.responses import Response
+
+from app.constants.cover_letter_tags import TAG_CATEGORIES
 from app.dependencies import get_current_user, get_db
 from app.models.user import User
 from app.schemas.cover_letter import (
@@ -18,11 +21,33 @@ from app.schemas.cover_letter import (
     CoverLetterListResponse,
     CoverLetterResponse,
     CoverLetterUpdateRequest,
+    ExportFormat,
 )
+from app.services.cover_letter_exporter import CoverLetterExporter
 from app.services.cover_letter_service import CoverLetterService
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
+
+
+@router.get(
+    "/tags",
+    summary="Get available tags",
+    description="Get all available predefined tags organized by category",
+)
+@limiter.limit("30/minute")
+def get_available_tags(
+    request: Request,
+) -> Any:
+    """
+    Get all available predefined tags for cover letter categorization.
+
+    Returns:
+    - Dictionary of tag categories with their respective tags
+
+    Rate limit: 30 requests per minute
+    """
+    return TAG_CATEGORIES
 
 
 @router.post(
@@ -62,31 +87,55 @@ async def generate_cover_letter(
     "/",
     response_model=CoverLetterListResponse,
     summary="List user's cover letters",
-    description="Get paginated list of all cover letters for the current user",
+    description="Get paginated list of all cover letters for the current user with optional search and filters",
 )
 @limiter.limit("30/minute")
 def list_cover_letters(
     request: Request,
     page: int = 1,
     page_size: int = 20,
+    search: str | None = None,
+    tags: str | None = None,
+    tone: str | None = None,
+    length: str | None = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """
-    Get paginated list of user's cover letters.
+    Get paginated list of user's cover letters with optional search and filters.
 
     Query parameters:
     - page: Page number (default: 1)
     - page_size: Items per page (default: 20, max: 100)
+    - search: Search text in job_title, company_name, and cover_letter_text
+    - tags: Comma-separated list of tags to filter by (e.g., "Remote,Software Engineering")
+    - tone: Filter by tone (professional, enthusiastic, balanced)
+    - length: Filter by length (short, medium, long)
+    - sort_by: Sort field (created_at, word_count, job_title, company_name) - default: created_at
+    - sort_order: Sort order (asc, desc) - default: desc
 
     Returns:
-    - List of cover letters sorted by creation date (newest first)
+    - List of cover letters matching the filters and search
     - Pagination metadata (total, page, page_size)
 
     Rate limit: 30 requests per minute
     """
+    # Parse tags from comma-separated string
+    tag_list = [tag.strip() for tag in tags.split(",")] if tags else None
+
     cover_letters, total = CoverLetterService.list_cover_letters(
-        db, current_user.id, page, page_size
+        db=db,
+        user_id=current_user.id,
+        page=page,
+        page_size=page_size,
+        search=search,
+        tags=tag_list,
+        tone=tone,
+        length=length,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
 
     return CoverLetterListResponse(
@@ -197,3 +246,71 @@ def delete_cover_letter(
     Rate limit: 10 requests per minute
     """
     CoverLetterService.delete_cover_letter(db, cover_letter_id, current_user.id)
+
+
+@router.get(
+    "/{cover_letter_id}/export",
+    summary="Export cover letter",
+    description="Export cover letter in PDF, DOCX, or TXT format",
+)
+@limiter.limit("20/minute")
+def export_cover_letter(
+    request: Request,
+    cover_letter_id: UUID,
+    format: ExportFormat = "pdf",
+    include_metadata: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    """
+    Export cover letter in specified format.
+
+    Path parameters:
+    - cover_letter_id: UUID of the cover letter
+
+    Query parameters:
+    - format: Export format (pdf, docx, txt) - default: pdf
+    - include_metadata: Include generation metadata in export (PDF only) - default: false
+
+    Returns:
+    - File download with appropriate content-type
+
+    Raises:
+    - 404: If cover letter not found or doesn't belong to user
+
+    Rate limit: 20 requests per minute
+    """
+    # Get cover letter and verify ownership
+    cover_letter = CoverLetterService.get_cover_letter(db, cover_letter_id, current_user.id)
+
+    if not cover_letter:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cover letter not found",
+        )
+
+    # Generate export based on format
+    exporter = CoverLetterExporter()
+
+    if format == "pdf":
+        file_bytes = exporter.export_to_pdf(cover_letter, include_metadata)
+        media_type = "application/pdf"
+    elif format == "docx":
+        file_bytes = exporter.export_to_docx(cover_letter)
+        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    else:  # txt
+        file_bytes = exporter.export_to_txt(cover_letter)
+        media_type = "text/plain"
+
+    # Generate appropriate filename
+    filename = exporter.get_filename(cover_letter, format)
+
+    # Return file download response
+    return Response(
+        content=file_bytes,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(file_bytes)),
+        },
+    )

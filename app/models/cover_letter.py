@@ -6,7 +6,7 @@ Stores AI-generated cover letters for job applications.
 import uuid
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -27,6 +27,7 @@ class CoverLetter(Base):
         cover_letter_text: The generated cover letter content
         tone: Writing tone (professional, enthusiastic, balanced)
         length: Target length (short, medium, long)
+        tags: JSONB array of categorization tags (optional)
         openai_tokens_used: AI tokens consumed during generation
         processing_time_ms: Time taken to generate
         word_count: Actual word count of generated text
@@ -47,6 +48,7 @@ class CoverLetter(Base):
         ...     cover_letter_text="Dear Hiring Manager...",
         ...     tone="professional",
         ...     length="medium",
+        ...     tags=["Software Engineering", "Remote", "Senior"],
         ...     word_count=350
         ... )
     """
@@ -85,6 +87,9 @@ class CoverLetter(Base):
     # Generation parameters
     tone = Column(String(20), nullable=False, default="professional")
     length = Column(String(20), nullable=False, default="medium")
+
+    # Tags for categorization (JSONB array)
+    tags = Column(JSONB, nullable=True, default=[])
 
     # Metrics
     openai_tokens_used = Column(Integer, nullable=True, default=0)

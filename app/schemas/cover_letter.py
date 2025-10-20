@@ -24,6 +24,9 @@ class CoverLetterGenerateRequest(BaseModel):
         default="medium",
         description="Target length: short (~250 words), medium (~350 words), long (~500 words)",
     )
+    tags: Optional[list[str]] = Field(
+        default=None, description="Optional categorization tags for organizing cover letters"
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -34,6 +37,7 @@ class CoverLetterGenerateRequest(BaseModel):
                 "company_name": "Google",
                 "tone": "professional",
                 "length": "medium",
+                "tags": ["Software Engineering", "Remote", "Senior"],
             }
         }
     )
@@ -65,6 +69,7 @@ class CoverLetterResponse(BaseModel):
     cover_letter_text: str
     tone: str
     length: str
+    tags: Optional[list[str]]
     openai_tokens_used: int
     processing_time_ms: int
     word_count: Optional[int]
@@ -81,3 +86,7 @@ class CoverLetterListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+# Export format type
+ExportFormat = Literal["pdf", "docx", "txt"]

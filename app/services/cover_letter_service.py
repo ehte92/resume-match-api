@@ -101,6 +101,7 @@ class CoverLetterService:
             cover_letter_text=ai_result["cover_letter_text"],
             tone=request.tone,
             length=request.length,
+            tags=request.tags if request.tags else [],
             openai_tokens_used=ai_result["tokens_used"],
             processing_time_ms=processing_time_ms,
             word_count=word_count,
@@ -140,16 +141,31 @@ class CoverLetterService:
 
     @staticmethod
     def list_cover_letters(
-        db: Session, user_id: UUID, page: int = 1, page_size: int = 20
+        db: Session,
+        user_id: UUID,
+        page: int = 1,
+        page_size: int = 20,
+        search: Optional[str] = None,
+        tags: Optional[list[str]] = None,
+        tone: Optional[str] = None,
+        length: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
     ) -> tuple[list[CoverLetter], int]:
         """
-        List user's cover letters with pagination.
+        List user's cover letters with pagination, search, and filters.
 
         Args:
             db: Database session
             user_id: Current user's ID
             page: Page number (1-indexed)
             page_size: Items per page (max 100)
+            search: Search text in job_title, company_name, and cover_letter_text
+            tags: List of tags to filter by (any tag match)
+            tone: Filter by tone
+            length: Filter by length
+            sort_by: Field to sort by (created_at, word_count, job_title, company_name)
+            sort_order: Sort order (asc, desc)
 
         Returns:
             Tuple of (list of CoverLetter objects, total count)
@@ -157,15 +173,51 @@ class CoverLetterService:
         # Limit page_size to prevent abuse
         page_size = min(page_size, 100)
 
+        # Start with base query
         query = db.query(CoverLetter).filter(CoverLetter.user_id == user_id)
+
+        # Apply search filter
+        if search:
+            search_pattern = f"%{search}%"
+            query = query.filter(
+                (CoverLetter.job_title.ilike(search_pattern))
+                | (CoverLetter.company_name.ilike(search_pattern))
+                | (CoverLetter.cover_letter_text.ilike(search_pattern))
+            )
+
+        # Apply tag filter (any tag match)
+        if tags and len(tags) > 0:
+            # Using JSONB contains operator to check if any tag is in the tags array
+            from sqlalchemy import func, cast
+            from sqlalchemy.dialects.postgresql import ARRAY, TEXT
+
+            # Convert Python list to PostgreSQL array for the overlap operator
+            query = query.filter(
+                func.jsonb_typeof(CoverLetter.tags) == "array"
+            ).filter(
+                cast(CoverLetter.tags, ARRAY(TEXT)).overlap(tags)
+            )
+
+        # Apply tone filter
+        if tone:
+            query = query.filter(CoverLetter.tone == tone)
+
+        # Apply length filter
+        if length:
+            query = query.filter(CoverLetter.length == length)
+
+        # Get total count before pagination
         total = query.count()
 
-        cover_letters = (
-            query.order_by(CoverLetter.created_at.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-            .all()
-        )
+        # Apply sorting
+        sort_column = getattr(CoverLetter, sort_by, CoverLetter.created_at)
+        if sort_order.lower() == "asc":
+            query = query.order_by(sort_column.asc())
+        else:
+            query = query.order_by(sort_column.desc())
+
+        # Apply pagination
+        cover_letters = query.offset((page - 1) * page_size).limit(page_size).all()
 
         return cover_letters, total
 
