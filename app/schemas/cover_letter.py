@@ -88,5 +88,39 @@ class CoverLetterListResponse(BaseModel):
     page_size: int
 
 
+class CoverLetterRefineRequest(BaseModel):
+    """Request schema for refining an existing cover letter with AI."""
+
+    refinement_instruction: str = Field(
+        ...,
+        min_length=10,
+        max_length=500,
+        description="Instructions for how to refine the cover letter (e.g., 'make it more concise', 'emphasize leadership experience')",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "refinement_instruction": "Make the cover letter more concise and emphasize my leadership experience in managing distributed teams"
+            }
+        }
+    )
+
+
+class CoverLetterRefineResponse(BaseModel):
+    """Response schema for refined cover letter with comparison to original."""
+
+    original_cover_letter: CoverLetterResponse
+    refined_cover_letter_text: str = Field(
+        ..., description="The refined version of the cover letter"
+    )
+    refinement_instruction: str = Field(..., description="The instruction used for refinement")
+    tokens_used: int = Field(..., description="AI tokens used for refinement")
+    processing_time_ms: int = Field(..., description="Time taken to refine in milliseconds")
+    word_count: int = Field(..., description="Word count of refined version")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 # Export format type
 ExportFormat = Literal["pdf", "docx", "txt"]

@@ -191,3 +191,100 @@ Generate a compelling cover letter that positions the candidate as an ideal fit 
         except Exception as e:
             logger.error(f"Cover letter generation failed: {e}", exc_info=True)
             raise
+
+    async def refine_cover_letter(
+        self, original_text: str, refinement_instruction: str, context: Optional[Dict] = None
+    ) -> Dict:
+        """
+        Refine an existing cover letter based on specific instructions.
+
+        Args:
+            original_text: The original cover letter text to refine
+            refinement_instruction: User instructions for refinement
+            context: Optional dict with job_title, company_name for better context
+
+        Returns:
+            Dictionary with:
+                - refined_text: The improved cover letter
+                - tokens_used: Token count for cost tracking
+
+        Raises:
+            ValueError: If AI client not initialized
+            Exception: If refinement fails
+        """
+        if not self.client:
+            raise ValueError("AI client not initialized - check OPENROUTER_API_KEY")
+
+        if not self.settings.ENABLE_AI_SUGGESTIONS:
+            raise ValueError("AI suggestions disabled in configuration")
+
+        try:
+            # Build context information
+            context_info = ""
+            if context:
+                job_title = context.get("job_title")
+                company_name = context.get("company_name")
+                if job_title or company_name:
+                    context_info = (
+                        f"\n\nContext: This is a cover letter for {job_title or 'a position'}"
+                    )
+                    if company_name:
+                        context_info += f" at {company_name}"
+
+            system_prompt = f"""You are an expert cover letter editor specializing in refining and improving cover letters.
+
+Your task is to refine the provided cover letter based on the user's specific instructions while:
+1. Maintaining the core message and key achievements
+2. Preserving the overall structure (opening, body, closing, signature)
+3. Keeping the professional tone appropriate for job applications
+4. Ensuring all improvements are natural and authentic
+5. Maintaining or improving ATS-friendliness
+
+Apply the refinement instruction precisely but thoughtfully. If asked to shorten, be concise without losing impact. If asked to emphasize something, highlight it effectively without being repetitive.{context_info}"""
+
+            user_prompt = f"""<original_cover_letter>
+{original_text}
+</original_cover_letter>
+
+<refinement_instruction>
+{refinement_instruction}
+</refinement_instruction>
+
+Please refine the cover letter according to the instruction above. Return the complete refined version."""
+
+            logger.info(
+                f"Refining cover letter with instruction: {refinement_instruction[:100]}..."
+            )
+
+            # Call AI with structured output
+            response = await self.client.chat.completions.create(
+                model=self.settings.OPENROUTER_MODEL,
+                response_model=CoverLetterStructure,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.7,
+                max_tokens=1500,
+            )
+
+            # Assemble structured response into full text
+            refined_text = f"{response.opening_paragraph}\n\n"
+            refined_text += "\n\n".join(response.body_paragraphs)
+            refined_text += f"\n\n{response.closing_paragraph}\n\n{response.signature_line}"
+
+            # Extract token usage
+            tokens_used = 0
+            if hasattr(response, "_raw_response"):
+                usage = getattr(response._raw_response, "usage", None)
+                if usage:
+                    tokens_used = getattr(usage, "total_tokens", 0)
+
+            word_count = len(refined_text.split())
+            logger.info(f"Refined cover letter: {word_count} words using {tokens_used} tokens")
+
+            return {"refined_text": refined_text, "tokens_used": tokens_used}
+
+        except Exception as e:
+            logger.error(f"Cover letter refinement failed: {e}", exc_info=True)
+            raise

@@ -290,3 +290,86 @@ class CoverLetterService:
         logger.info(f"Deleted cover letter {cover_letter_id}")
 
         return True
+
+    @staticmethod
+    async def refine_cover_letter(
+        db: Session, cover_letter_id: UUID, user_id: UUID, refinement_instruction: str
+    ) -> dict:
+        """
+        Refine an existing cover letter using AI based on user instructions.
+
+        Args:
+            db: Database session
+            cover_letter_id: Cover letter ID to refine
+            user_id: Current user's ID (for ownership check)
+            refinement_instruction: User's instructions for refinement
+
+        Returns:
+            Dictionary with:
+                - original_cover_letter: Original CoverLetter object
+                - refined_cover_letter_text: Refined text
+                - refinement_instruction: The instruction used
+                - tokens_used: Tokens used for refinement
+                - processing_time_ms: Time taken
+                - word_count: Word count of refined version
+
+        Raises:
+            HTTPException 404: If cover letter not found
+            HTTPException 503: If AI service unavailable
+            HTTPException 500: If refinement fails
+        """
+        start_time = time.time()
+
+        # 1. Get original cover letter and verify ownership
+        cover_letter = CoverLetterService.get_cover_letter(db, cover_letter_id, user_id)
+
+        if not cover_letter:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Cover letter not found"
+            )
+
+        # 2. Refine using AI
+        try:
+            generator = CoverLetterGenerator()
+            context = {
+                "job_title": cover_letter.job_title,
+                "company_name": cover_letter.company_name,
+            }
+
+            ai_result = await generator.refine_cover_letter(
+                original_text=cover_letter.cover_letter_text,
+                refinement_instruction=refinement_instruction,
+                context=context,
+            )
+        except ValueError as e:
+            # AI not configured or disabled
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"AI service unavailable: {str(e)}",
+            )
+        except Exception as e:
+            logger.error(f"AI refinement failed: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Cover letter refinement failed. Please try again.",
+            )
+
+        # 3. Calculate metrics
+        processing_time_ms = int((time.time() - start_time) * 1000)
+        word_count = len(ai_result["refined_text"].split())
+
+        logger.info(
+            f"Refined cover letter {cover_letter_id} to {word_count} words "
+            f"in {processing_time_ms}ms using {ai_result['tokens_used']} tokens"
+        )
+
+        # 4. Return refinement result (do NOT save to database automatically)
+        # User will decide whether to accept or reject the refinement
+        return {
+            "original_cover_letter": cover_letter,
+            "refined_cover_letter_text": ai_result["refined_text"],
+            "refinement_instruction": refinement_instruction,
+            "tokens_used": ai_result["tokens_used"],
+            "processing_time_ms": processing_time_ms,
+            "word_count": word_count,
+        }

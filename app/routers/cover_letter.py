@@ -19,6 +19,8 @@ from app.models.user import User
 from app.schemas.cover_letter import (
     CoverLetterGenerateRequest,
     CoverLetterListResponse,
+    CoverLetterRefineRequest,
+    CoverLetterRefineResponse,
     CoverLetterResponse,
     CoverLetterUpdateRequest,
     ExportFormat,
@@ -313,4 +315,60 @@ def export_cover_letter(
             "Content-Disposition": f'attachment; filename="{filename}"',
             "Content-Length": str(len(file_bytes)),
         },
+    )
+
+
+@router.post(
+    "/{cover_letter_id}/refine",
+    response_model=CoverLetterRefineResponse,
+    summary="Refine cover letter with AI",
+    description="Refine an existing cover letter based on specific instructions using AI",
+)
+@limiter.limit("3/minute")  # Lower rate limit for AI refinement
+async def refine_cover_letter(
+    request: Request,
+    cover_letter_id: UUID,
+    refine_request: CoverLetterRefineRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """
+    Refine an existing cover letter with AI guidance.
+
+    This endpoint allows users to iteratively improve their cover letters by
+    providing specific instructions (e.g., "make it more concise", "emphasize
+    leadership skills", "add more technical details").
+
+    Path parameters:
+    - cover_letter_id: UUID of the cover letter to refine
+
+    Request body:
+    - refinement_instruction: Instructions for refinement (10-500 characters)
+
+    Returns:
+    - Original cover letter for comparison
+    - Refined cover letter text
+    - Refinement metrics (tokens, processing time, word count)
+
+    Raises:
+    - 404: If cover letter not found or doesn't belong to user
+    - 503: If AI service is unavailable
+    - 500: If refinement fails
+
+    Rate limit: 3 requests per minute
+
+    Note: The refined version is NOT automatically saved. The frontend should
+    present it to the user for review before accepting/rejecting the changes.
+    """
+    result = await CoverLetterService.refine_cover_letter(
+        db, cover_letter_id, current_user.id, refine_request.refinement_instruction
+    )
+
+    return CoverLetterRefineResponse(
+        original_cover_letter=result["original_cover_letter"],
+        refined_cover_letter_text=result["refined_cover_letter_text"],
+        refinement_instruction=result["refinement_instruction"],
+        tokens_used=result["tokens_used"],
+        processing_time_ms=result["processing_time_ms"],
+        word_count=result["word_count"],
     )
