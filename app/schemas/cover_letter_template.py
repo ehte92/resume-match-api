@@ -16,7 +16,10 @@ class CoverLetterTemplateCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="Template display name")
     description: Optional[str] = Field(None, description="What this template is for")
     category: str = Field(
-        ..., min_length=1, max_length=50, description="Template category (e.g., 'Software Engineering')"
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Template category (e.g., 'Software Engineering')",
     )
     tone: Literal["professional", "enthusiastic", "balanced"] = Field(
         default="professional", description="Writing tone for the template"
@@ -48,7 +51,9 @@ class CoverLetterTemplateCreate(BaseModel):
 class CoverLetterTemplateUpdate(BaseModel):
     """Request schema for updating an existing template."""
 
-    name: Optional[str] = Field(None, min_length=1, max_length=255, description="Template display name")
+    name: Optional[str] = Field(
+        None, min_length=1, max_length=255, description="Template display name"
+    )
     description: Optional[str] = Field(None, description="What this template is for")
     category: Optional[str] = Field(
         None, min_length=1, max_length=50, description="Template category"
@@ -56,9 +61,7 @@ class CoverLetterTemplateUpdate(BaseModel):
     tone: Optional[Literal["professional", "enthusiastic", "balanced"]] = Field(
         None, description="Writing tone for the template"
     )
-    length: Optional[Literal["short", "medium", "long"]] = Field(
-        None, description="Target length"
-    )
+    length: Optional[Literal["short", "medium", "long"]] = Field(None, description="Target length")
     template_text: Optional[str] = Field(
         None, min_length=100, description="The cover letter template text"
     )

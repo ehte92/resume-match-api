@@ -200,9 +200,9 @@ def seed_templates():
     db = SessionLocal()
     try:
         # Check if templates already exist
-        existing = db.query(CoverLetterTemplate).filter(
-            CoverLetterTemplate.is_system == True
-        ).count()
+        existing = (
+            db.query(CoverLetterTemplate).filter(CoverLetterTemplate.is_system == True).count()
+        )
 
         if existing > 0:
             print(f"Found {existing} existing system templates. Skipping seed...")

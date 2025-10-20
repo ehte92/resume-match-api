@@ -81,8 +81,7 @@ class CoverLetterTemplateService:
         # If user_id provided, filter to system templates OR templates owned by user
         if user_id:
             query = query.filter(
-                (CoverLetterTemplate.is_system == True)
-                | (CoverLetterTemplate.user_id == user_id)
+                (CoverLetterTemplate.is_system == True) | (CoverLetterTemplate.user_id == user_id)
             )
 
         return query.first()
@@ -186,9 +185,7 @@ class CoverLetterTemplateService:
         """
         template = (
             db.query(CoverLetterTemplate)
-            .filter(
-                CoverLetterTemplate.id == template_id, CoverLetterTemplate.user_id == user_id
-            )
+            .filter(CoverLetterTemplate.id == template_id, CoverLetterTemplate.user_id == user_id)
             .first()
         )
 
@@ -244,9 +241,7 @@ class CoverLetterTemplateService:
         """
         template = (
             db.query(CoverLetterTemplate)
-            .filter(
-                CoverLetterTemplate.id == template_id, CoverLetterTemplate.user_id == user_id
-            )
+            .filter(CoverLetterTemplate.id == template_id, CoverLetterTemplate.user_id == user_id)
             .first()
         )
 
@@ -278,12 +273,16 @@ class CoverLetterTemplateService:
             db: Database session
             template_id: Template ID
         """
-        template = db.query(CoverLetterTemplate).filter(CoverLetterTemplate.id == template_id).first()
+        template = (
+            db.query(CoverLetterTemplate).filter(CoverLetterTemplate.id == template_id).first()
+        )
 
         if template:
             template.usage_count += 1
             db.commit()
-            logger.info(f"Incremented usage count for template {template_id} to {template.usage_count}")
+            logger.info(
+                f"Incremented usage count for template {template_id} to {template.usage_count}"
+            )
 
     @staticmethod
     def get_categories(db: Session) -> list[str]:
