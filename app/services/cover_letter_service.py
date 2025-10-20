@@ -192,9 +192,7 @@ class CoverLetterService:
             from sqlalchemy.dialects.postgresql import ARRAY, TEXT
 
             # Convert Python list to PostgreSQL array for the overlap operator
-            query = query.filter(
-                func.jsonb_typeof(CoverLetter.tags) == "array"
-            ).filter(
+            query = query.filter(func.jsonb_typeof(CoverLetter.tags) == "array").filter(
                 cast(CoverLetter.tags, ARRAY(TEXT)).overlap(tags)
             )
 

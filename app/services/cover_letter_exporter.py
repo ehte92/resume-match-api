@@ -51,9 +51,7 @@ class CoverLetterExporter:
         return content.encode("utf-8")
 
     @staticmethod
-    def export_to_pdf(
-        cover_letter: CoverLetter, include_metadata: bool = False
-    ) -> bytes:
+    def export_to_pdf(cover_letter: CoverLetter, include_metadata: bool = False) -> bytes:
         """
         Export cover letter as professionally formatted PDF.
 
@@ -124,7 +122,12 @@ class CoverLetterExporter:
         for para_text in paragraphs:
             if para_text.strip():
                 # Escape HTML special characters and replace line breaks
-                safe_text = para_text.strip().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                safe_text = (
+                    para_text.strip()
+                    .replace("&", "&amp;")
+                    .replace("<", "&lt;")
+                    .replace(">", "&gt;")
+                )
                 safe_text = safe_text.replace("\n", "<br/>")
                 para = Paragraph(safe_text, body_style)
                 story.append(para)
@@ -212,9 +215,7 @@ class CoverLetterExporter:
         return docx_bytes
 
     @staticmethod
-    def get_filename(
-        cover_letter: CoverLetter, export_format: str
-    ) -> str:
+    def get_filename(cover_letter: CoverLetter, export_format: str) -> str:
         """
         Generate appropriate filename for exported cover letter.
 
@@ -230,7 +231,7 @@ class CoverLetterExporter:
         # Add company name
         if cover_letter.company_name:
             # Remove non-ASCII characters for HTTP header compatibility
-            safe_company = ''.join(c if ord(c) < 128 else '' for c in cover_letter.company_name)
+            safe_company = "".join(c if ord(c) < 128 else "" for c in cover_letter.company_name)
             safe_company = safe_company.strip().replace(" ", "-")
             if safe_company:  # Only add if there's something left after sanitization
                 parts.append(safe_company)
@@ -238,7 +239,7 @@ class CoverLetterExporter:
         # Add job title
         if cover_letter.job_title:
             # Remove non-ASCII characters for HTTP header compatibility
-            safe_title = ''.join(c if ord(c) < 128 else '' for c in cover_letter.job_title)
+            safe_title = "".join(c if ord(c) < 128 else "" for c in cover_letter.job_title)
             safe_title = safe_title.strip().replace(" ", "-")
             if safe_title:  # Only add if there's something left after sanitization
                 parts.append(safe_title)
@@ -251,7 +252,7 @@ class CoverLetterExporter:
         filename = "-".join(parts) + f".{export_format}"
 
         # Clean filename (remove invalid characters)
-        invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
+        invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
         for char in invalid_chars:
             filename = filename.replace(char, "-")
 

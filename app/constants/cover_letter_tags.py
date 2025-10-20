@@ -96,11 +96,7 @@ TAG_CATEGORIES: Dict[str, List[str]] = {
 }
 
 # Flattened list of all available tags
-ALL_TAGS: List[str] = [
-    tag
-    for category_tags in TAG_CATEGORIES.values()
-    for tag in category_tags
-]
+ALL_TAGS: List[str] = [tag for category_tags in TAG_CATEGORIES.values() for tag in category_tags]
 
 
 def get_tag_category(tag: str) -> str | None:
