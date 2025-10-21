@@ -14,6 +14,7 @@ from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
@@ -40,8 +41,26 @@ try:
         TTFont("NotoSansArabic-Bold", str(FONTS_DIR / "NotoSansArabic-Bold.ttf"))
     )
 
+    # Register font families for bold/italic support in HTML tags
+    # This is CRITICAL for <b>, <i> tags to work in ReportLab Paragraphs
+    pdfmetrics.registerFontFamily(
+        'NotoSans',
+        normal='NotoSans',
+        bold='NotoSans-Bold',
+        italic='NotoSans',  # No separate italic variant, use regular
+        boldItalic='NotoSans-Bold'  # No separate bold-italic, use bold
+    )
+
+    pdfmetrics.registerFontFamily(
+        'NotoSansArabic',
+        normal='NotoSansArabic',
+        bold='NotoSansArabic-Bold',
+        italic='NotoSansArabic',
+        boldItalic='NotoSansArabic-Bold'
+    )
+
     FONTS_AVAILABLE = True
-    logger.info("Successfully registered Noto Sans fonts for PDF generation")
+    logger.info("Successfully registered Noto Sans fonts and font families for PDF generation")
 except Exception as e:
     logger.warning(f"Could not register Noto Sans fonts, falling back to Helvetica: {e}")
     FONTS_AVAILABLE = False
@@ -171,6 +190,60 @@ class CoverLetterExporter:
         return text
 
     @staticmethod
+    def _html_to_reportlab_html(element) -> str:
+        """
+        Convert TipTap HTML element to ReportLab-compatible HTML.
+
+        ReportLab's Paragraph supports: <b>, <i>, <u>, <br/>, <font>, <para>
+        TipTap uses: <strong>, <em>, <u>, <p>
+
+        This method:
+        1. Converts <strong> → <b>, <em> → <i>
+        2. Applies text normalization to text nodes only
+        3. Preserves HTML structure for ReportLab rendering
+
+        Args:
+            element: BeautifulSoup element (paragraph or list item)
+
+        Returns:
+            HTML string compatible with ReportLab Paragraph
+        """
+        result = []
+
+        # Process all children of the element
+        for child in element.children:
+            if child.name == "strong" or child.name == "b":
+                # Bold text
+                text_content = CoverLetterExporter._normalize_text_for_pdf(child.get_text())
+                result.append(f"<b>{text_content}</b>")
+            elif child.name == "em" or child.name == "i":
+                # Italic text
+                text_content = CoverLetterExporter._normalize_text_for_pdf(child.get_text())
+                result.append(f"<i>{text_content}</i>")
+            elif child.name == "u":
+                # Underline text
+                text_content = CoverLetterExporter._normalize_text_for_pdf(child.get_text())
+                result.append(f"<u>{text_content}</u>")
+            elif child.name == "br":
+                # Line break
+                result.append("<br/>")
+            elif child.name is None:
+                # Text node - normalize and escape HTML special chars
+                text = str(child)
+                text = CoverLetterExporter._normalize_text_for_pdf(text)
+                # Escape HTML special characters
+                text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                result.append(text)
+            else:
+                # Other tags - extract text and normalize
+                text_content = CoverLetterExporter._normalize_text_for_pdf(child.get_text())
+                # Escape HTML special characters
+                text_content = text_content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                result.append(text_content)
+
+        return "".join(result)
+
+    @staticmethod
     def export_to_txt(cover_letter: CoverLetter) -> bytes:
         """
         Export cover letter as plain text file.
@@ -259,7 +332,7 @@ class CoverLetterExporter:
             leading=16,
             textColor=colors.black,
             fontName=base_font,
-            alignment=WD_ALIGN_PARAGRAPH.LEFT,
+            alignment=TA_LEFT,  # Use ReportLab alignment constant
         )
 
         # Add header with job details
@@ -291,25 +364,23 @@ class CoverLetterExporter:
             for element in soup.find_all(["p", "ul", "ol"]):
                 if element.name == "p":
                     # Handle paragraph with inline formatting
-                    text = CoverLetterExporter._normalize_text_for_pdf(str(element))
-                    # Process RTL text if needed
+                    # Convert TipTap HTML to ReportLab-compatible HTML
+                    text = CoverLetterExporter._html_to_reportlab_html(element)
+                    # Process RTL text if needed (after HTML conversion)
                     text = CoverLetterExporter._process_rtl_text(text)
-                    # ReportLab supports <b>, <i>, <u>, <br/> tags
+                    # ReportLab will render <b>, <i>, <u>, <br/> tags
                     para = Paragraph(text, body_style)
                     story.append(para)
                     story.append(Spacer(1, 12))
                 elif element.name in ["ul", "ol"]:
-                    # Handle lists
-                    for li in element.find_all("li"):
-                        bullet = (
-                            "•"
-                            if element.name == "ul"
-                            else f"{list(element.find_all('li')).index(li) + 1}."
-                        )
-                        text = CoverLetterExporter._normalize_text_for_pdf(
-                            f"{bullet} {li.get_text()}"
-                        )
-                        # Process RTL text if needed
+                    # Handle lists with inline formatting support
+                    list_items = element.find_all("li", recursive=False)
+                    for idx, li in enumerate(list_items):
+                        bullet = "•" if element.name == "ul" else f"{idx + 1}."
+                        # Convert list item HTML to ReportLab format
+                        li_text = CoverLetterExporter._html_to_reportlab_html(li)
+                        # Add bullet/number and process RTL text
+                        text = f"{bullet} {li_text}"
                         text = CoverLetterExporter._process_rtl_text(text)
                         para = Paragraph(text, body_style)
                         story.append(para)
