@@ -4,6 +4,7 @@ Provides REST API for AI-powered cover letter generation and management.
 """
 
 from typing import Any
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -306,13 +307,18 @@ def export_cover_letter(
 
     # Generate appropriate filename
     filename = exporter.get_filename(cover_letter, format)
+    # URL-encode filename for RFC 2231/5987 compliance (handles Unicode safely)
+    filename_utf8 = quote(filename.encode("utf-8"))
 
-    # Return file download response
+    # Return file download response with RFC 2231 encoding
     return Response(
         content=file_bytes,
         media_type=media_type,
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
+            # ASCII fallback + UTF-8 version for modern browsers
+            "Content-Disposition": (
+                f'attachment; filename="{filename}"; ' f"filename*=UTF-8''{filename_utf8}"
+            ),
             "Content-Length": str(len(file_bytes)),
         },
     )

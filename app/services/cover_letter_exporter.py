@@ -1,13 +1,15 @@
 """
 Cover letter export service for generating PDF, DOCX, and TXT files.
 Provides professional formatting for different export formats.
+Handles both plain text and HTML-formatted cover letters.
 """
 
 import io
 import logging
-from datetime import datetime
-from typing import Optional
+import re
+from pathlib import Path
 
+from bs4 import BeautifulSoup
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt
@@ -15,20 +17,164 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 from app.models.cover_letter import CoverLetter
 
 logger = logging.getLogger(__name__)
 
+# Font registration - register Noto Sans fonts for comprehensive Unicode support
+FONTS_DIR = Path(__file__).parent.parent / "fonts"
+FONTS_AVAILABLE = False
+
+try:
+    # Register regular Noto Sans fonts
+    pdfmetrics.registerFont(TTFont("NotoSans", str(FONTS_DIR / "NotoSans-Regular.ttf")))
+    pdfmetrics.registerFont(TTFont("NotoSans-Bold", str(FONTS_DIR / "NotoSans-Bold.ttf")))
+
+    # Register Arabic fonts for RTL support
+    pdfmetrics.registerFont(TTFont("NotoSansArabic", str(FONTS_DIR / "NotoSansArabic-Regular.ttf")))
+    pdfmetrics.registerFont(
+        TTFont("NotoSansArabic-Bold", str(FONTS_DIR / "NotoSansArabic-Bold.ttf"))
+    )
+
+    FONTS_AVAILABLE = True
+    logger.info("Successfully registered Noto Sans fonts for PDF generation")
+except Exception as e:
+    logger.warning(f"Could not register Noto Sans fonts, falling back to Helvetica: {e}")
+    FONTS_AVAILABLE = False
+
 
 class CoverLetterExporter:
     """Export cover letters to various formats with professional styling."""
 
     @staticmethod
+    def _contains_arabic(text: str) -> bool:
+        """
+        Check if text contains Arabic characters.
+
+        Args:
+            text: Text to check
+
+        Returns:
+            True if Arabic characters detected, False otherwise
+        """
+        arabic_range = range(0x0600, 0x06FF + 1)  # Arabic Unicode block
+        return any(ord(char) in arabic_range for char in text)
+
+    @staticmethod
+    def _process_rtl_text(text: str) -> str:
+        """
+        Process Right-to-Left text (Arabic, Hebrew) for proper PDF rendering.
+
+        Args:
+            text: Text that may contain RTL content
+
+        Returns:
+            Processed text with proper RTL shaping
+        """
+        if not CoverLetterExporter._contains_arabic(text):
+            return text
+
+        try:
+            from arabic_reshaper import reshape
+            from bidi.algorithm import get_display
+
+            # Reshape Arabic text (connect letters properly)
+            reshaped_text = reshape(text)
+            # Apply bidirectional algorithm for proper RTL display
+            bidi_text = get_display(reshaped_text)
+            return bidi_text
+        except ImportError:
+            logger.warning(
+                "arabic-reshaper or python-bidi not available, Arabic text may not render correctly"
+            )
+            return text
+        except Exception as e:
+            logger.error(f"Error processing RTL text: {e}")
+            return text
+
+    @staticmethod
+    def _is_html_content(text: str) -> bool:
+        """
+        Check if content contains HTML tags.
+
+        Args:
+            text: Text to check
+
+        Returns:
+            True if HTML tags detected, False otherwise
+        """
+        return bool(re.search(r"<[^>]+>", text))
+
+    @staticmethod
+    def _html_to_plain_text(html: str) -> str:
+        """
+        Convert HTML to plain text, preserving formatting.
+
+        Args:
+            html: HTML content
+
+        Returns:
+            Plain text with preserved structure
+        """
+        soup = BeautifulSoup(html, "html.parser")
+
+        # Convert lists to bullet points
+        for ul in soup.find_all("ul"):
+            for li in ul.find_all("li"):
+                li.string = f"• {li.get_text()}\n"
+
+        for ol in soup.find_all("ol"):
+            for idx, li in enumerate(ol.find_all("li"), 1):
+                li.string = f"{idx}. {li.get_text()}\n"
+
+        # Get text and clean up
+        text = soup.get_text()
+        # Remove excessive newlines
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text.strip()
+
+    @staticmethod
+    def _normalize_text_for_pdf(text: str) -> str:
+        """
+        Normalize Unicode characters for PDF generation.
+        Replaces special Unicode characters that Helvetica font doesn't support.
+
+        Args:
+            text: Text to normalize
+
+        Returns:
+            Normalized text with ASCII-safe characters
+        """
+        # Replace various dash/hyphen types with regular hyphen
+        text = text.replace("\u2011", "-")  # Non-breaking hyphen
+        text = text.replace("\u2013", "-")  # En dash
+        text = text.replace("\u2014", "-")  # Em dash
+        text = text.replace("\u2015", "-")  # Horizontal bar
+
+        # Replace various quote types with straight quotes
+        text = text.replace("\u2018", "'")  # Left single quote
+        text = text.replace("\u2019", "'")  # Right single quote
+        text = text.replace("\u201C", '"')  # Left double quote
+        text = text.replace("\u201D", '"')  # Right double quote
+
+        # Replace ellipsis
+        text = text.replace("\u2026", "...")  # Horizontal ellipsis
+
+        # Replace bullet variants
+        text = text.replace("\u2022", "•")  # Bullet (keep this one as it works)
+        text = text.replace("\u2023", "•")  # Triangular bullet
+
+        return text
+
+    @staticmethod
     def export_to_txt(cover_letter: CoverLetter) -> bytes:
         """
         Export cover letter as plain text file.
+        Handles both HTML and plain text content.
 
         Args:
             cover_letter: CoverLetter model instance
@@ -45,8 +191,13 @@ class CoverLetterExporter:
         header_lines.append(f"Generated: {cover_letter.created_at.strftime('%B %d, %Y')}")
         header_lines.append("")  # Empty line
 
+        # Convert HTML to plain text if needed
+        letter_text = cover_letter.cover_letter_text
+        if CoverLetterExporter._is_html_content(letter_text):
+            letter_text = CoverLetterExporter._html_to_plain_text(letter_text)
+
         # Assemble full content
-        content = "\n".join(header_lines) + "\n" + cover_letter.cover_letter_text
+        content = "\n".join(header_lines) + "\n" + letter_text
 
         return content.encode("utf-8")
 
@@ -78,6 +229,10 @@ class CoverLetterExporter:
         story = []
         styles = getSampleStyleSheet()
 
+        # Determine font names based on availability
+        base_font = "NotoSans" if FONTS_AVAILABLE else "Helvetica"
+        bold_font = "NotoSans-Bold" if FONTS_AVAILABLE else "Helvetica-Bold"
+
         # Create custom styles
         heading_style = ParagraphStyle(
             "CustomHeading",
@@ -85,7 +240,7 @@ class CoverLetterExporter:
             fontSize=14,
             textColor=colors.black,
             spaceAfter=6,
-            fontName="Helvetica-Bold",
+            fontName=bold_font,
         )
 
         subheading_style = ParagraphStyle(
@@ -94,7 +249,7 @@ class CoverLetterExporter:
             fontSize=10,
             textColor=colors.grey,
             spaceAfter=12,
-            fontName="Helvetica",
+            fontName=base_font,
         )
 
         body_style = ParagraphStyle(
@@ -103,52 +258,103 @@ class CoverLetterExporter:
             fontSize=11,
             leading=16,
             textColor=colors.black,
-            fontName="Helvetica",
+            fontName=base_font,
             alignment=WD_ALIGN_PARAGRAPH.LEFT,
         )
 
         # Add header with job details
         if cover_letter.job_title:
-            story.append(Paragraph(cover_letter.job_title, heading_style))
+            normalized_title = CoverLetterExporter._normalize_text_for_pdf(cover_letter.job_title)
+            # Process RTL text if needed
+            processed_title = CoverLetterExporter._process_rtl_text(normalized_title)
+            story.append(Paragraph(processed_title, heading_style))
         if cover_letter.company_name:
-            story.append(Paragraph(cover_letter.company_name, subheading_style))
+            normalized_company = CoverLetterExporter._normalize_text_for_pdf(
+                cover_letter.company_name
+            )
+            # Process RTL text if needed
+            processed_company = CoverLetterExporter._process_rtl_text(normalized_company)
+            story.append(Paragraph(processed_company, subheading_style))
         else:
             story.append(Spacer(1, 12))
 
         story.append(Spacer(1, 0.2 * inch))
 
-        # Add cover letter text with paragraph breaks
-        paragraphs = cover_letter.cover_letter_text.split("\n\n")
-        for para_text in paragraphs:
-            if para_text.strip():
-                # Escape HTML special characters and replace line breaks
-                safe_text = (
-                    para_text.strip()
-                    .replace("&", "&amp;")
-                    .replace("<", "&lt;")
-                    .replace(">", "&gt;")
-                )
-                safe_text = safe_text.replace("\n", "<br/>")
-                para = Paragraph(safe_text, body_style)
-                story.append(para)
-                story.append(Spacer(1, 12))
+        # Add cover letter text with formatting
+        letter_text = cover_letter.cover_letter_text
+
+        if CoverLetterExporter._is_html_content(letter_text):
+            # Parse HTML and convert to ReportLab format
+            soup = BeautifulSoup(letter_text, "html.parser")
+
+            # Process each paragraph element
+            for element in soup.find_all(["p", "ul", "ol"]):
+                if element.name == "p":
+                    # Handle paragraph with inline formatting
+                    text = CoverLetterExporter._normalize_text_for_pdf(str(element))
+                    # Process RTL text if needed
+                    text = CoverLetterExporter._process_rtl_text(text)
+                    # ReportLab supports <b>, <i>, <u>, <br/> tags
+                    para = Paragraph(text, body_style)
+                    story.append(para)
+                    story.append(Spacer(1, 12))
+                elif element.name in ["ul", "ol"]:
+                    # Handle lists
+                    for li in element.find_all("li"):
+                        bullet = (
+                            "•"
+                            if element.name == "ul"
+                            else f"{list(element.find_all('li')).index(li) + 1}."
+                        )
+                        text = CoverLetterExporter._normalize_text_for_pdf(
+                            f"{bullet} {li.get_text()}"
+                        )
+                        # Process RTL text if needed
+                        text = CoverLetterExporter._process_rtl_text(text)
+                        para = Paragraph(text, body_style)
+                        story.append(para)
+                        story.append(Spacer(1, 6))
+                    story.append(Spacer(1, 6))
+        else:
+            # Plain text - split on double newlines for paragraphs
+            paragraphs = letter_text.split("\n\n")
+            for para_text in paragraphs:
+                if para_text.strip():
+                    # Normalize Unicode characters first
+                    normalized_text = CoverLetterExporter._normalize_text_for_pdf(para_text.strip())
+                    # Process RTL text if needed
+                    processed_text = CoverLetterExporter._process_rtl_text(normalized_text)
+                    # Escape HTML special characters and replace line breaks
+                    safe_text = (
+                        processed_text.replace("&", "&amp;")
+                        .replace("<", "&lt;")
+                        .replace(">", "&gt;")
+                    )
+                    safe_text = safe_text.replace("\n", "<br/>")
+                    para = Paragraph(safe_text, body_style)
+                    story.append(para)
+                    story.append(Spacer(1, 12))
 
         # Add metadata footer if requested
         if include_metadata:
             story.append(Spacer(1, 0.3 * inch))
+            # Use base font for metadata (Noto Sans doesn't have oblique variant)
+            metadata_font = base_font if FONTS_AVAILABLE else "Helvetica-Oblique"
             metadata_style = ParagraphStyle(
                 "Metadata",
                 parent=styles["Normal"],
                 fontSize=8,
                 textColor=colors.grey,
-                fontName="Helvetica-Oblique",
+                fontName=metadata_font,
             )
-            metadata_text = (
+            metadata_text = CoverLetterExporter._normalize_text_for_pdf(
                 f"Generated on {cover_letter.created_at.strftime('%B %d, %Y')} | "
                 f"Tone: {cover_letter.tone.capitalize()} | "
                 f"Length: {cover_letter.length.capitalize()} | "
                 f"Words: {cover_letter.word_count}"
             )
+            # Process RTL text if needed
+            metadata_text = CoverLetterExporter._process_rtl_text(metadata_text)
             story.append(Paragraph(metadata_text, metadata_style))
 
         # Build PDF
@@ -193,17 +399,71 @@ class CoverLetterExporter:
         # Add spacing
         doc.add_paragraph()
 
-        # Add cover letter text with paragraph breaks
-        paragraphs = cover_letter.cover_letter_text.split("\n\n")
-        for para_text in paragraphs:
-            if para_text.strip():
-                para = doc.add_paragraph(para_text.strip())
-                # Set font and spacing
-                for run in para.runs:
-                    run.font.name = "Calibri"
-                    run.font.size = Pt(11)
-                para.paragraph_format.line_spacing = 1.15
-                para.paragraph_format.space_after = Pt(10)
+        # Add cover letter text with formatting
+        letter_text = cover_letter.cover_letter_text
+
+        if CoverLetterExporter._is_html_content(letter_text):
+            # Parse HTML and apply formatting to DOCX
+            soup = BeautifulSoup(letter_text, "html.parser")
+
+            for element in soup.find_all(["p", "ul", "ol"]):
+                if element.name == "p":
+                    # Create paragraph
+                    para = doc.add_paragraph()
+                    # Parse inline formatting (bold, italic, underline)
+                    for child in element.children:
+                        if child.name == "strong" or child.name == "b":
+                            run = para.add_run(child.get_text())
+                            run.bold = True
+                        elif child.name == "em" or child.name == "i":
+                            run = para.add_run(child.get_text())
+                            run.italic = True
+                        elif child.name == "u":
+                            run = para.add_run(child.get_text())
+                            run.underline = True
+                        elif child.name == "br":
+                            para.add_run("\n")
+                        elif child.name is None:  # Text node
+                            para.add_run(str(child))
+                        else:
+                            para.add_run(child.get_text())
+
+                    # Apply formatting to all runs
+                    for run in para.runs:
+                        if not run.font.name:
+                            run.font.name = "Calibri"
+                        if not run.font.size:
+                            run.font.size = Pt(11)
+                    para.paragraph_format.line_spacing = 1.15
+                    para.paragraph_format.space_after = Pt(10)
+
+                elif element.name == "ul":
+                    # Bullet list
+                    for li in element.find_all("li", recursive=False):
+                        para = doc.add_paragraph(li.get_text(), style="List Bullet")
+                        for run in para.runs:
+                            run.font.name = "Calibri"
+                            run.font.size = Pt(11)
+
+                elif element.name == "ol":
+                    # Numbered list
+                    for li in element.find_all("li", recursive=False):
+                        para = doc.add_paragraph(li.get_text(), style="List Number")
+                        for run in para.runs:
+                            run.font.name = "Calibri"
+                            run.font.size = Pt(11)
+        else:
+            # Plain text - split on double newlines for paragraphs
+            paragraphs = letter_text.split("\n\n")
+            for para_text in paragraphs:
+                if para_text.strip():
+                    para = doc.add_paragraph(para_text.strip())
+                    # Set font and spacing
+                    for run in para.runs:
+                        run.font.name = "Calibri"
+                        run.font.size = Pt(11)
+                    para.paragraph_format.line_spacing = 1.15
+                    para.paragraph_format.space_after = Pt(10)
 
         # Save to bytes
         buffer = io.BytesIO()
