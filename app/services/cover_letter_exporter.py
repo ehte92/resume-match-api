@@ -44,19 +44,19 @@ try:
     # Register font families for bold/italic support in HTML tags
     # This is CRITICAL for <b>, <i> tags to work in ReportLab Paragraphs
     pdfmetrics.registerFontFamily(
-        'NotoSans',
-        normal='NotoSans',
-        bold='NotoSans-Bold',
-        italic='NotoSans',  # No separate italic variant, use regular
-        boldItalic='NotoSans-Bold'  # No separate bold-italic, use bold
+        "NotoSans",
+        normal="NotoSans",
+        bold="NotoSans-Bold",
+        italic="NotoSans",  # No separate italic variant, use regular
+        boldItalic="NotoSans-Bold",  # No separate bold-italic, use bold
     )
 
     pdfmetrics.registerFontFamily(
-        'NotoSansArabic',
-        normal='NotoSansArabic',
-        bold='NotoSansArabic-Bold',
-        italic='NotoSansArabic',
-        boldItalic='NotoSansArabic-Bold'
+        "NotoSansArabic",
+        normal="NotoSansArabic",
+        bold="NotoSansArabic-Bold",
+        italic="NotoSansArabic",
+        boldItalic="NotoSansArabic-Bold",
     )
 
     FONTS_AVAILABLE = True
@@ -238,7 +238,9 @@ class CoverLetterExporter:
                 # Other tags - extract text and normalize
                 text_content = CoverLetterExporter._normalize_text_for_pdf(child.get_text())
                 # Escape HTML special characters
-                text_content = text_content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                text_content = (
+                    text_content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                )
                 result.append(text_content)
 
         return "".join(result)
