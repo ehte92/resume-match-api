@@ -204,6 +204,9 @@ Analyze this resume against the job description and provide:
 Focus on the most impactful changes first. Be specific and actionable."""
 
             logger.info(f"Calling OpenRouter API with model: {self.settings.OPENROUTER_MODEL}")
+            logger.debug(f"API Key (first 10 chars): {self.settings.OPENROUTER_API_KEY[:10]}...")
+            logger.debug(f"Base URL: {self.settings.OPENROUTER_BASE_URL}")
+            logger.debug(f"Temperature: {self.settings.OPENROUTER_TEMPERATURE}, Max Tokens: {self.settings.OPENROUTER_MAX_TOKENS}")
 
             # Call OpenRouter via Instructor - automatically handles JSON schema!
             # Instructor magic: response is guaranteed to match AIAnalysisResult schema
@@ -243,12 +246,15 @@ Focus on the most impactful changes first. Be specific and actionable."""
             }
 
         except ValidationError as e:
-            logger.error(f"AI response validation failed: {e}")
+            logger.error(f"AI response validation failed: {e}", exc_info=True)
+            logger.error(f"Validation error details: {str(e)}")
             # Instructor will automatically retry, but if all retries fail, return empty
             return self._empty_response()
 
         except Exception as e:
-            logger.error(f"AI suggestion generation failed: {e}", exc_info=True)
+            logger.error(f"AI suggestion generation failed: {type(e).__name__}: {str(e)}", exc_info=True)
+            logger.error(f"Model attempted: {self.settings.OPENROUTER_MODEL}")
+            logger.error(f"Full error details:", exc_info=True)
             return self._empty_response()
 
     def _empty_response(self) -> Dict:
